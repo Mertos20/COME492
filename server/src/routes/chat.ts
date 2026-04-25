@@ -72,6 +72,17 @@ router.get("/messages", requireAuth, requirePaidMembership, async (req: AuthRequ
     return;
   }
 
+  const senderRoleToMarkRead = req.user.role === "expert" ? "user" : "expert";
+  await ChatMessage.updateMany(
+    {
+      userId: userIdForQuery,
+      expertTier: tier,
+      senderRole: senderRoleToMarkRead,
+      readAt: null
+    },
+    { $set: { readAt: new Date() } }
+  );
+
   const messages = await ChatMessage.find({ userId: userIdForQuery, expertTier: tier }).sort({ createdAt: 1 }).lean();
   res.json(messages);
 });
@@ -109,7 +120,8 @@ router.post("/messages", requireAuth, requirePaidMembership, async (req: AuthReq
     expertTier: tier,
     senderRole: req.user.role === "expert" ? "expert" : "user",
     senderName: req.user?.fullName || "Kullanici",
-    message: message.trim()
+    message: message.trim(),
+    readAt: null
   });
 
   res.status(201).json(saved);

@@ -1,18 +1,14 @@
 import { Request, Response, NextFunction } from "express";
 import jwt from "jsonwebtoken";
+import User, { IUser } from "../models/User";
 
 export interface AuthRequest extends Request {
-  user?: {
-    id: string;
-    membership: "free" | "bronze" | "silver" | "gold";
-    role: "user" | "expert";
-    fullName: string;
-  };
+  user?: IUser;
 }
 
 const secret = process.env.JWT_SECRET || "dev_secret";
 
-export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction): void => {
+export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const token = req.headers.authorization?.replace("Bearer ", "");
 
   if (!token) {
@@ -21,10 +17,17 @@ export const requireAuth = (req: AuthRequest, res: Response, next: NextFunction)
   }
 
   try {
-    const payload = jwt.verify(token, secret) as AuthRequest["user"];
-    req.user = payload;
+    const payload = jwt.verify(token, secret) as { id: string };
+    const user = await User.findById(payload.id).select("-password");
+
+    if (!user) {
+      res.status(401).json({ message: "Kullanıcı bulunamadı" });
+      return;
+    }
+
+    req.user = user;
     next();
-  } catch {
+  } catch (error) {
     res.status(401).json({ message: "Geçersiz token" });
   }
 };

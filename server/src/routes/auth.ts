@@ -99,7 +99,7 @@ router.get("/pricing", (_req, res) => {
     plans: [
       { tier: "bronze", name: "BRONZE", price: 5, description: "Temel uzman konsultasyonu" },
       { tier: "silver", name: "SILVER", price: 10, description: "Gelismis analiz ve danismanlik" },
-      { tier: "gold", name: "PLATINUM", price: 20, description: "Premium danismanlik ve ozel desteği" }
+      { tier: "gold", name: "GOLD", price: 20, description: "Premium danismanlik ve ozel desteği" }
     ]
   });
 });

@@ -13,6 +13,8 @@ import PortfolioPage from "./pages/PortfolioPage";
 import TransactionHistoryPage from "./pages/TransactionHistoryPage";
 import ChatPage from "./pages/ChatPage";
 import ExpertPanelPage from "./pages/ExpertPanelPage";
+import BalanceLoadPage from "./pages/BalanceLoadPage";
+import NewsPage from "./pages/NewsPage";
 
 const plans = ["free", "bronze", "silver", "gold"] as const;
 
@@ -117,10 +119,11 @@ function App() {
           <Routes>
             <Route path="/" element={<DashboardPage />} />
             <Route path="/markets" element={<MarketsPage markets={markets} popular={popular} />} />
+            <Route path="/news" element={<NewsPage />} />
             <Route path="/subscriptions" element={<SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} />} />
             <Route
               path="/deposit"
-              element={user?.role === "user" ? <TradingPage balance={balance} onTradeComplete={handleTradeComplete} /> : <Navigate to="/" />}
+              element={user?.role === "user" ? <BalanceLoadPage /> : <Navigate to="/" />}
             />
             <Route
               path="/trading"
@@ -143,6 +146,8 @@ function App() {
               element={user?.role === "expert" ? <ExpertPanelPage user={user} token={token} /> : <Navigate to="/" />}
             />
             <Route path="*" element={<Navigate to="/" />} />
+            <Route path="/balance-load" element={<BalanceLoadPage />} />
+            <Route path="/load-balance" element={<BalanceLoadPage />} />
           </Routes>
         </Layout>
       )}

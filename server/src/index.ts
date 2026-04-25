@@ -14,6 +14,7 @@ import portfolioRoutes from "./routes/portfolio";
 import chatRoutes from "./routes/chat";
 import aiRoutes from "./routes/ai";
 import transactionsRoutes from "./routes/transactions";
+import newsRoutes from "./routes/news";
 import ChatMessage from "./models/ChatMessage";
 import { seedExperts } from "./utils/seedExperts";
 import { getAllInstruments } from "./utils/marketData";
@@ -28,6 +29,7 @@ const secret = process.env.JWT_SECRET || "dev_secret";
 const io = new SocketIOServer(server, {
   cors: {
     origin: process.env.CLIENT_URL || "http://localhost:5173",
+    methods: ["GET", "POST"],
     credentials: true
   }
 });
@@ -48,6 +50,7 @@ app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/transactions", transactionsRoutes);
+app.use("/api/news", newsRoutes);
 
 io.use((socket, next) => {
   try {
@@ -85,7 +88,7 @@ io.on("connection", (socket) => {
     socket.join(`expert:${user.membership}`);
   }
 
-  socket.on("chat:message", async (payload: { tier: "bronze" | "silver" | "gold"; message: string; targetUserId?: string }) => {
+  socket.on("chat:message", async (payload: { tier: "bronze" | "silver" | "gold"; message: string; targetUserId?: string; messageId?: string }) => {
     if (!payload.message?.trim()) {
       return;
     }
@@ -95,20 +98,23 @@ io.on("connection", (socket) => {
       return;
     }
 
-    // Save message with sender's info (not target)
-    const saved = await ChatMessage.create({
-      userId: targetUserId,
-      expertTier: payload.tier,
-      senderRole: user.role === "expert" ? "expert" : "user",
-      senderName: user.fullName,
-      message: payload.message.trim()
-    });
+    const saved = payload.messageId
+      ? await ChatMessage.findById(payload.messageId)
+      : await ChatMessage.create({
+          userId: targetUserId,
+          expertTier: payload.tier,
+          senderRole: user.role === "expert" ? "expert" : "user",
+          senderName: user.fullName,
+          message: payload.message.trim()
+        });
 
-    // Emit to both user and expert rooms so both can see it
-    io.to(`user:${targetUserId}`).emit("chat:new", saved);
-    if (user.role === "expert") {
-      io.to(`expert:${user.membership}`).emit("chat:new", saved);
+    if (!saved) {
+      return;
     }
+
+    // Emit to both user room and the relevant expert tier room.
+    io.to(`user:${targetUserId}`).emit("chat:new", saved);
+    io.to(`expert:${payload.tier}`).emit("chat:new", saved);
   });
 });
 

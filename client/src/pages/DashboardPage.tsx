@@ -13,7 +13,7 @@ function StatCard({ title, value, pnl, pnlPercent }: { title: string, value: str
     const isNegative = pnl !== undefined && pnl < 0;
 
     return (
-        <Grid item xs={12} sm={6} md={3}>
+        <Grid xs={12} sm={6} md={3} key={title}>
             <Paper elevation={3} sx={{ p: 2, textAlign: 'center', height: '100%', borderColor: isPositive ? 'success.main' : isNegative ? 'error.main' : 'transparent', borderWidth: 1, borderStyle: 'solid' }}>
                 <Typography variant="subtitle2" color="text.secondary" gutterBottom>{title}</Typography>
                 <Typography variant="h5" component="p" fontWeight="bold">{value}</Typography>
@@ -32,7 +32,7 @@ function StatCard({ title, value, pnl, pnlPercent }: { title: string, value: str
 
 function ActionCard({ title, description, to, icon }: { title: string, description: string, to: string, icon: React.ReactNode }) {
     return (
-        <Grid item xs={12} sm={6} md={4}>
+        <Grid xs={12} sm={6} md={4}>
             <Card elevation={2} sx={{ height: '100%' }}>
                 <CardActionArea component={RouterLink} to={to} sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center', height: '100%' }}>
                     {icon}
@@ -78,17 +78,17 @@ export default function DashboardPage() {
   }
 
   const quickActions = [
-      { title: "Bakiye Yükle", to: "/deposit", description: "Cüzdanınıza para ekleyin", icon: <AccountBalanceWallet color="primary" sx={{ fontSize: 40 }}/> },
+      { title: "Bakiye Yükle", to: "/load-balance", description: "Cüzdanınıza para ekleyin", icon: <AccountBalanceWallet color="primary" sx={{ fontSize: 40 }}/> },
       { title: "Al / Sat", to: "/trading", description: "Enstrüman ticareti yapın", icon: <ShowChart color="primary" sx={{ fontSize: 40 }}/> },
       { title: "Portföy", to: "/portfolio", description: "Varlıklarınızı inceleyin", icon: <Receipt color="primary" sx={{ fontSize: 40 }}/> },
       { title: "İşlem Geçmişi", to: "/transactions", description: "Tüm işlemlerinizi görün", icon: <Receipt color="primary" sx={{ fontSize: 40 }}/> },
       { title: "Danışmanlar", to: "/chat", description: "Uzmanlarla iletişim kurun", icon: <People color="primary" sx={{ fontSize: 40 }}/> },
-      { title: "Puan Satın Al", to: "/subscriptions", description: "Premium özellikler için", icon: <WorkspacePremium color="primary" sx={{ fontSize: 40 }}/> },
+      { title: "Üyelikler", to: "/subscriptions", description: "Premium özellikler için", icon: <WorkspacePremium color="primary" sx={{ fontSize: 40 }}/> },
   ]
 
   return (
     <Grid container spacing={4}>
-        <Grid item xs={12}>
+        <Grid xs={12}>
             <Typography variant="h4" gutterBottom>Portföy Özeti</Typography>
             <Grid container spacing={3}>
                 <StatCard title="Toplam Bakiye" value={formatMoney(portfolio.balance)} />
@@ -98,14 +98,14 @@ export default function DashboardPage() {
             </Grid>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid xs={12}>
             <Typography variant="h4" gutterBottom>Hızlı Erişim</Typography>
             <Grid container spacing={3}>
                 {quickActions.map(action => <ActionCard key={action.to} {...action} />)}
             </Grid>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid xs={12}>
             <Typography variant="h4" gutterBottom>Son Varlıklarınız</Typography>
             {portfolio.holdings.length === 0 ? (
                 <Typography>

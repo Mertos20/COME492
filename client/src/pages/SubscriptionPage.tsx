@@ -24,7 +24,7 @@ const formatMoney = (value: number): string =>
 const planFeatures: Record<string, string[]> = {
     bronze: ["Bronze uzman danışmanlık", "Basit piyasa analizleri", "Haftalık raporlar"],
     silver: ["Silver uzman danışmanlık", "Detaylı piyasa analizleri", "Günlük raporlar", "Özel tavsiyeler"],
-    gold: ["Platinum uzman danışmanlık", "Kapsamlı piyasa analizleri", "Gerçek zamanlı destek", "Kişiselleştirilmiş yatırım stratejileri", "Özel etkinliklere davet"],
+    gold: ["Gold uzman danışmanlık", "Kapsamlı piyasa analizleri", "Gerçek zamanlı destek", "Kişiselleştirilmiş yatırım stratejileri", "Özel etkinliklere davet"],
 }
 
 export default function SubscriptionPage({ user, balance, onUpgrade }: SubscriptionPageProps) {
@@ -96,7 +96,7 @@ export default function SubscriptionPage({ user, balance, onUpgrade }: Subscript
           const canUpgrade = planLevel > currentUserLevel;
 
           return (
-            <Grid item key={plan.tier} xs={12} md={4}>
+            <Grid key={plan.tier} xs={12} md={4}>
               <Card elevation={isCurrentPlan ? 8 : 3} sx={{ border: isCurrentPlan ? 2 : 0, borderColor: 'primary.main' }}>
                 <CardHeader
                   title={plan.name}

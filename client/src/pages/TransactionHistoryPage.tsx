@@ -50,55 +50,74 @@ export default function TransactionHistoryPage() {
     <Paper elevation={3} sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom>İşlem Geçmişi</Typography>
 
-      <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
-        <Grid item xs={12} sm={6} md={3}>
-          <FormControl fullWidth>
-            <InputLabel>İşlem Tipi</InputLabel>
-            <Select
-              value={filters.type}
-              label="İşlem Tipi"
-              onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
-            >
-              <MenuItem value="all">Tüm İşlem Tipleri</MenuItem>
-              <MenuItem value="buy">Alış</MenuItem>
-              <MenuItem value="sell">Satış</MenuItem>
-              <MenuItem value="deposit">Bakiye Yükleme</MenuItem>
-              <MenuItem value="upgrade">Üyelik Yükseltme</MenuItem>
-            </Select>
-          </FormControl>
+      <Grid container spacing={2} sx={{ mb: 3 }}>
+        <Grid xs={12} sm={6} md={3}>
+          <Box>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
+              İşlem Tipi
+            </Typography>
+            <FormControl fullWidth>
+              <Select
+                value={filters.type}
+                onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
+              >
+                <MenuItem value="all">Tüm İşlem Tipleri</MenuItem>
+                <MenuItem value="buy">Alış</MenuItem>
+                <MenuItem value="sell">Satış</MenuItem>
+                <MenuItem value="deposit">Bakiye Yükleme</MenuItem>
+                <MenuItem value="upgrade">Üyelik Yükseltme</MenuItem>
+              </Select>
+            </FormControl>
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={3}>
-          <TextField
-            fullWidth
-            label="Sembol (örn: BTCUSDT)"
-            value={filters.symbol}
-            onChange={(e) => setFilters((p) => ({ ...p, symbol: e.target.value }))}
-          />
+        <Grid xs={12} sm={6} md={3}>
+          <Box>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
+              Sembol
+            </Typography>
+            <TextField
+              fullWidth
+              placeholder="Örn: BTCUSDT"
+              value={filters.symbol}
+              onChange={(e) => setFilters((p) => ({ ...p, symbol: e.target.value }))}
+            />
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <TextField
-            fullWidth
-            type="date"
-            label="Başlangıç Tarihi"
-            value={filters.from}
-            onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
+        <Grid xs={12} sm={6} md={2}>
+          <Box>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
+              Başlangıç Tarihi
+            </Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={filters.from}
+              onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
+            />
+          </Box>
         </Grid>
-        <Grid item xs={12} sm={6} md={2}>
-          <TextField
-            fullWidth
-            type="date"
-            label="Bitiş Tarihi"
-            value={filters.to}
-            onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
-            InputLabelProps={{ shrink: true }}
-          />
+        <Grid xs={12} sm={6} md={2}>
+          <Box>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
+              Bitiş Tarihi
+            </Typography>
+            <TextField
+              fullWidth
+              type="date"
+              value={filters.to}
+              onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
+            />
+          </Box>
         </Grid>
-        <Grid item xs={12} md={2}>
-          <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading} sx={{ height: '56px' }}>
-            {loading ? <CircularProgress size={24} /> : "Filtrele"}
-          </Button>
+        <Grid xs={12} md={2}>
+          <Box>
+            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600, visibility: "hidden" }}>
+              Filtrele
+            </Typography>
+            <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading} sx={{ height: '56px' }}>
+              {loading ? <CircularProgress size={24} /> : "Filtrele"}
+            </Button>
+          </Box>
         </Grid>
       </Grid>
 

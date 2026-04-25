@@ -30,6 +30,8 @@ export interface PortfolioHolding {
 export interface PortfolioSummary {
   balance: number;
   holdings: PortfolioHolding[];
+  investmentValue: number;
+  currentValue: number;
   totalValue: number;
   totalPnl: number;
   totalPnlPercent: number;
@@ -43,6 +45,7 @@ export interface ChatMessage {
   senderName: string;
   message: string;
   createdAt: string;
+  readAt?: string | null;
 }
 
 export interface ExpertProfile {
@@ -66,4 +69,13 @@ export interface ExpertConversationItem {
   userName: string;
   latestMessage: string;
   latestAt: string | null;
+}
+
+export interface NewsItem {
+  title: string;
+  summary: string;
+  url: string;
+  imageUrl: string | null;
+  publishedAt: string;
+  source: string;
 }

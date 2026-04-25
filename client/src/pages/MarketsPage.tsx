@@ -49,7 +49,7 @@ export default function MarketsPage({ markets: initialMarkets, popular: initialP
       <Typography variant="h4" gutterBottom>Popüler Yatırım Ürünleri</Typography>
       <Grid container spacing={3} sx={{ mb: 5 }}>
         {popular.map((item) => (
-          <Grid item xs={12} sm={6} md={4} lg={3} key={item.symbol}>
+          <Grid xs={12} sm={6} md={4} lg={3} key={item.symbol}>
             <Card elevation={3}>
               <CardContent>
                 <Typography variant="h6" component="div">{item.name}</Typography>

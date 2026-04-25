@@ -6,6 +6,7 @@ export interface IChatMessage extends Document {
   senderRole: "user" | "expert";
   senderName: string;
   message: string;
+  readAt?: Date | null;
 }
 
 const ChatMessageSchema = new Schema<IChatMessage>(
@@ -14,7 +15,8 @@ const ChatMessageSchema = new Schema<IChatMessage>(
     expertTier: { type: String, enum: ["bronze", "silver", "gold"], required: true },
     senderRole: { type: String, enum: ["user", "expert"], required: true },
     senderName: { type: String, required: true },
-    message: { type: String, required: true, trim: true }
+    message: { type: String, required: true, trim: true },
+    readAt: { type: Date, required: false, default: null }
   },
   { timestamps: true }
 );

@@ -34,6 +34,24 @@ const formatDateTime = (value: string | null): string => {
   });
 };
 
+const formatMessageTime = (value: string): string => {
+  return new Date(value).toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+};
+
+const formatReadStatus = (readAt?: string | null): string => {
+  if (!readAt) {
+    return "Gonderildi";
+  }
+
+  return `Okundu ${new Date(readAt).toLocaleTimeString("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+  })}`;
+};
+
 export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [chatText, setChatText] = useState("");
@@ -127,8 +145,8 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
       setMessages((prev) => [...prev, newMessage]);
       setChatText("");
 
-      await api.post<ChatMessage>("/chat/messages", payload);
-      chatSocket?.emit("chat:message", payload);
+      const savedRes = await api.post<ChatMessage>("/chat/messages", payload);
+      chatSocket?.emit("chat:message", { ...payload, messageId: savedRes.data._id });
 
       // Refresh messages to get actual _id
       const res = await api.get<ChatMessage[]>(`/chat/messages?tier=${expertTier}&userId=${selectedUserId}`);
@@ -154,7 +172,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
   return (
     <Grid container spacing={2} sx={{ height: "calc(100vh - 100px)", p: 2 }}>
       {/* Conversation Queue */}
-      <Grid item xs={12} md={4} sx={{ display: "flex", flexDirection: "column" }}>
+      <Grid xs={12} md={4} sx={{ display: "flex", flexDirection: "column" }}>
         <Paper sx={{ p: 2, flex: 1, display: "flex", flexDirection: "column" }}>
           <Typography variant="h6" gutterBottom>
             Konuşma Kuyruğu ({user.membership?.toUpperCase()})
@@ -203,7 +221,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
       </Grid>
 
       {/* Chat Panel */}
-      <Grid item xs={12} md={8} sx={{ display: "flex", flexDirection: "column" }}>
+      <Grid xs={12} md={8} sx={{ display: "flex", flexDirection: "column" }}>
         <Paper sx={{ p: 2, flex: 1, display: "flex", flexDirection: "column" }}>
           <Typography variant="h6" gutterBottom>
             Uzman Canlı Mesajlaşma
@@ -225,6 +243,12 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
                 }}
               >
                 {messages.map((msg) => (
+                  (() => {
+                    const selectedConversation = expertQueue.find((item) => item.userId === selectedUserId);
+                    const displayName = msg.senderRole === "user"
+                      ? (selectedConversation?.userName || msg.senderName)
+                      : msg.senderName;
+                    return (
                   <Box
                     key={msg._id}
                     sx={{
@@ -240,12 +264,32 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
                         maxWidth: "70%",
                         bgcolor: msg.senderRole === "expert" ? "primary.light" : "background.paper",
                         color: msg.senderRole === "expert" ? "primary.contrastText" : "text.primary",
+                        border: msg.senderRole === "expert" ? "none" : "1px solid",
+                        borderColor: msg.senderRole === "expert" ? "transparent" : "grey.300",
+                        boxShadow: msg.senderRole === "expert" ? 2 : 1,
                       }}
                     >
-                      <Typography variant="subtitle2">{msg.senderName}</Typography>
+                      <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                        {displayName}
+                      </Typography>
                       <Typography variant="body1">{msg.message}</Typography>
+                      <Typography
+                        variant="caption"
+                        sx={{
+                          mt: 0.5,
+                          display: "block",
+                          opacity: 0.8,
+                          textAlign: msg.senderRole === "expert" ? "right" : "left",
+                          color: msg.senderRole === "expert" ? "primary.contrastText" : "text.secondary",
+                        }}
+                      >
+                        {formatMessageTime(msg.createdAt)}
+                        {msg.senderRole === "expert" ? ` • ${formatReadStatus(msg.readAt)}` : ""}
+                      </Typography>
                     </Paper>
                   </Box>
+                    );
+                  })()
                 ))}
               </Box>
               <Box

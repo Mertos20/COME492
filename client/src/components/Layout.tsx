@@ -32,6 +32,7 @@ export default function Layout({ user, balance, onLogout, children, activePage }
   const baseLinks = [
     { path: "/", label: "Dashboard" },
     { path: "/markets", label: "Piyasalar" },
+    { path: "/news", label: "Haberler" },
   ];
 
   const userLinks =
@@ -66,9 +67,9 @@ export default function Layout({ user, balance, onLogout, children, activePage }
                     {user.role === "user" && (
                         <Box sx={{ display: 'flex', gap: 1 }}>
                             <Button variant="contained" color="secondary" size="small" onClick={() => navigate('/subscriptions')}>
-                                Puan Satın Al
+                                Üyelikler
                             </Button>
-                            <Button variant="contained" color="primary" size="small" onClick={() => navigate('/deposit')}>
+                            <Button variant="contained" color="primary" size="small" onClick={() => navigate('/load-balance')}>
                                 Bakiye Yükle
                             </Button>
                         </Box>
