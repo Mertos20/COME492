@@ -1,8 +1,11 @@
 import dotenv from "dotenv";
+console.log("[System] Forcing server restart to apply User model migration hook...");
 import path from "path";
 import http from "http";
 import cors from "cors";
 import express from "express";
+import helmet from "helmet";
+import rateLimit from "express-rate-limit";
 import mongoose from "mongoose";
 import jwt from "jsonwebtoken";
 import { Server as SocketIOServer } from "socket.io";
@@ -20,7 +23,7 @@ import { seedExperts } from "./utils/seedExperts";
 import { getAllInstruments } from "./utils/marketData";
 
 // Load .env from root directory
-dotenv.config({ path: path.resolve(__dirname, "../../.env") });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
 
 const app = express();
 const server = http.createServer(app);
@@ -35,20 +38,48 @@ const io = new SocketIOServer(server, {
 });
 const marketNamespace = io.of("/market");
 
-app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173" }));
-app.use(express.json());
+app.use(cors({ origin: process.env.CLIENT_URL || "http://localhost:5173", credentials: true }));
+app.use(express.json({ limit: "1mb" }));
+app.use(helmet({ contentSecurityPolicy: false }));
+
+// Rate limiters
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  message: { message: "Çok fazla istek gönderildi. Lütfen 15 dakika sonra tekrar deneyin." },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 200,
+  message: { message: "API istek limiti aşıldı." },
+  standardHeaders: true,
+  legacyHeaders: false
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  message: { message: "AI danışman istek limiti aşıldı. Lütfen biraz bekleyin." },
+  standardHeaders: true,
+  legacyHeaders: false
+});
 
 app.get("/api/health", (_req, res) => {
   res.json({ ok: true, platform: "portfol.io" });
 });
 
+app.use("/api/auth/login", authLimiter);
+app.use("/api/auth/register", authLimiter);
 app.use("/api/auth", authRoutes);
 app.use("/api/markets", marketRoutes);
-app.use("/api/wallet", walletRoutes);
-app.use("/api/trade", tradeRoutes);
+app.use("/api/wallet", apiLimiter, walletRoutes);
+app.use("/api/trade", apiLimiter, tradeRoutes);
 app.use("/api/portfolio", portfolioRoutes);
 app.use("/api/chat", chatRoutes);
-app.use("/api/ai", aiRoutes);
+app.use("/api/ai", aiLimiter, aiRoutes);
 app.use("/api/transactions", transactionsRoutes);
 app.use("/api/news", newsRoutes);
 
@@ -118,21 +149,24 @@ io.on("connection", (socket) => {
   });
 });
 
+import { processPendingOrders } from "./utils/orderEngine";
+
 marketNamespace.on("connection", async (socket) => {
   const snapshot = await getAllInstruments();
   socket.emit("market:update", snapshot);
-
-  // Emit market updates at regular intervals
-  const updateInterval = Number(process.env.MARKET_UPDATE_INTERVAL_MS || 15000);
-  const interval = setInterval(async () => {
-    const updatedSnapshot = await getAllInstruments();
-    socket.emit("market:update", updatedSnapshot);
-  }, updateInterval);
-
-  socket.on("disconnect", () => {
-    clearInterval(interval);
-  });
 });
+
+// Global market update and order engine loop
+const updateInterval = Number(process.env.MARKET_UPDATE_INTERVAL_MS || 15000);
+setInterval(async () => {
+  try {
+    const updatedSnapshot = await getAllInstruments();
+    marketNamespace.emit("market:update", updatedSnapshot);
+    await processPendingOrders(updatedSnapshot);
+  } catch (err) {
+    console.error("Global market loop error:", err);
+  }
+}, updateInterval);
 
 const startServer = async () => {
   try {

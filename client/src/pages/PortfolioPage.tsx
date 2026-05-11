@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { PortfolioSummary, MarketInstrument } from "../types";
-import { Grid, Paper, Typography, Box, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, ToggleButtonGroup, ToggleButton } from "@mui/material";
-import { ArrowUpward, ArrowDownward } from '@mui/icons-material';
+import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, ToggleButtonGroup, ToggleButton } from "@mui/material";
+import { TrendingUp, TrendingDown, AccountBalance, Assessment } from '@mui/icons-material';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
+import LoadingSkeleton from "../components/LoadingSkeleton";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -15,108 +16,50 @@ const toNumber = (value: unknown): number => {
 
 type RangeKey = "1D" | "1W" | "1M" | "1Y";
 
-interface PerformancePoint {
-  label: string;
-  value: number;
-  pnl: number;
-}
+interface PerformancePoint { label: string; value: number; pnl: number; }
 
-const getSeriesLength = (range: RangeKey): number => {
-  if (range === "1D") return 24;
-  if (range === "1W") return 7;
-  if (range === "1M") return 30;
-  return 365;
-};
+const getSeriesLength = (r: RangeKey) => ({ "1D": 24, "1W": 7, "1M": 30, "1Y": 365 }[r]);
 
 const buildLabels = (length: number, range: RangeKey): string[] => {
-  if (range === "1D") {
-    return Array.from({ length }, (_v, i) => `${i}:00`);
-  }
-
-  if (range === "1W") {
-    return ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"];
-  }
-
-  if (range === "1M") {
-    return Array.from({ length }, (_v, i) => `${i + 1}`);
-  }
-
+  if (range === "1D") return Array.from({ length }, (_v, i) => `${i}:00`);
+  if (range === "1W") return ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"];
   return Array.from({ length }, (_v, i) => `${i + 1}`);
 };
 
 const get30DayPriceSeries = (market: MarketInstrument | undefined, fallbackPrice: number): number[] => {
   const raw = market?.history30d || [];
-  const series = raw
-    .map((value) => toNumber(value))
-    .filter((value) => Number.isFinite(value) && value > 0);
-
-  if (series.length >= 30) {
-    return series.slice(series.length - 30);
-  }
-
+  const series = raw.map(v => toNumber(v)).filter(v => Number.isFinite(v) && v > 0);
+  if (series.length >= 30) return series.slice(series.length - 30);
   const safe = series.length > 0 ? series : [toNumber(fallbackPrice) || 0];
-  const fillValue = safe[0];
   const missing = 30 - safe.length;
-  return [...Array.from({ length: missing }, () => fillValue), ...safe];
+  return [...Array.from({ length: missing }, () => safe[0]), ...safe];
 };
 
-const buildRangeSeriesFrom30d = (series30d: number[], range: RangeKey): number[] => {
-  if (range === "1M") {
-    return [...series30d];
-  }
-
-  if (range === "1W") {
-    return series30d.slice(-7);
-  }
-
+const buildRangeSeriesFrom30d = (s: number[], range: RangeKey): number[] => {
+  if (range === "1M") return [...s];
+  if (range === "1W") return s.slice(-7);
   if (range === "1D") {
-    const yesterday = series30d[series30d.length - 2] ?? series30d[series30d.length - 1] ?? 0;
-    const today = series30d[series30d.length - 1] ?? yesterday;
-    return Array.from({ length: 24 }, (_v, i) => yesterday + ((today - yesterday) * (i / 23)));
+    const y = s[s.length - 2] ?? s[s.length - 1] ?? 0;
+    const t = s[s.length - 1] ?? y;
+    return Array.from({ length: 24 }, (_v, i) => y + ((t - y) * (i / 23)));
   }
-
-  const olderDays = 365 - 30;
-  const headValue = series30d[0] ?? 0;
-  return [...Array.from({ length: olderDays }, () => headValue), ...series30d];
+  return [...Array.from({ length: 335 }, () => s[0] ?? 0), ...s];
 };
 
-const buildPerformanceSeries = (
-  holdings: PortfolioSummary["holdings"],
-  markets: MarketInstrument[],
-  range: RangeKey
-): PerformancePoint[] => {
+const buildPerformanceSeries = (holdings: PortfolioSummary["holdings"], markets: MarketInstrument[], range: RangeKey): PerformancePoint[] => {
   const length = getSeriesLength(range);
   const labels = buildLabels(length, range);
-  const marketMap = new Map(markets.map((market) => [market.symbol, market]));
-  const invested = holdings.reduce((sum, item) => sum + (toNumber(item.quantity) * toNumber(item.avgBuyPrice)), 0);
-
-  if (holdings.length === 0) {
-    return labels.map((label) => ({ label, value: 0, pnl: 0 }));
+  const marketMap = new Map(markets.map(m => [m.symbol, m]));
+  const invested = holdings.reduce((s, i) => s + (toNumber(i.quantity) * toNumber(i.avgBuyPrice)), 0);
+  if (holdings.length === 0) return labels.map(l => ({ label: l, value: 0, pnl: 0 }));
+  const vs = Array.from({ length }, () => 0);
+  for (const h of holdings) {
+    const q = toNumber(h.quantity);
+    if (q <= 0) continue;
+    const rs = buildRangeSeriesFrom30d(get30DayPriceSeries(marketMap.get(h.symbol), toNumber(h.currentPrice)), range);
+    for (let i = 0; i < length; i++) vs[i] += q * toNumber(rs[i]);
   }
-
-  const valueSeries = Array.from({ length }, () => 0);
-
-  for (const holding of holdings) {
-    const quantity = toNumber(holding.quantity);
-    if (quantity <= 0) {
-      continue;
-    }
-
-    const market = marketMap.get(holding.symbol);
-    const fallbackPrice = toNumber(holding.currentPrice);
-    const series30d = get30DayPriceSeries(market, fallbackPrice);
-    const rangeSeries = buildRangeSeriesFrom30d(series30d, range);
-
-    for (let i = 0; i < length; i += 1) {
-      valueSeries[i] += quantity * toNumber(rangeSeries[i]);
-    }
-  }
-
-  return valueSeries.map((value, index) => ({
-    label: labels[index],
-    value,
-    pnl: value - invested
-  }));
+  return vs.map((v, i) => ({ label: labels[i], value: v, pnl: v - invested }));
 };
 
 export default function PortfolioPage() {
@@ -126,146 +69,114 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadPortfolio = async () => {
+    const load = async () => {
       try {
-        const [portfolioRes, marketsRes] = await Promise.all([
-          api.get<PortfolioSummary>("/portfolio/summary"),
-          api.get<MarketInstrument[]>("/markets/all")
-        ]);
-        setPortfolio(portfolioRes.data);
-        setMarkets(marketsRes.data);
-      } catch {
-        console.error("Portföy yüklenemedi");
-      } finally {
-        setLoading(false);
-      }
+        const [p, m] = await Promise.all([api.get<PortfolioSummary>("/portfolio/summary"), api.get<MarketInstrument[]>("/markets/all")]);
+        setPortfolio(p.data); setMarkets(m.data);
+      } catch { console.error("Portföy yüklenemedi"); }
+      finally { setLoading(false); }
     };
-
-    loadPortfolio();
+    load();
   }, []);
 
-  if (loading) {
-    return <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}><CircularProgress /></Box>;
-  }
+  if (loading) return <LoadingSkeleton type="dashboard" />;
+  if (!portfolio) return <Alert severity="error">Portföy bilgileri yüklenemedi.</Alert>;
 
-  if (!portfolio) {
-    return <Alert severity="error">Portföy bilgileri yüklenemedi.</Alert>;
-  }
-
-  const totalPnl = toNumber(portfolio.totalPnl);
-  const totalPnlPercent = toNumber(portfolio.totalPnlPercent);
-  const investmentValue = toNumber(portfolio.investmentValue);
-  const currentValue = toNumber(portfolio.currentValue);
-  const balance = toNumber(portfolio.balance);
+  const totalPnl = toNumber(portfolio.totalPnl), totalPnlPercent = toNumber(portfolio.totalPnlPercent);
+  const investmentValue = toNumber(portfolio.investmentValue), currentValue = toNumber(portfolio.currentValue), balance = toNumber(portfolio.balance);
   const performanceSeries = buildPerformanceSeries(portfolio.holdings, markets, range);
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>Portföy Detayları</Typography>
+    <Box>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Portföy Detayları</Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>Tüm varlıklarınızın detaylı görünümü</Typography>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                <Typography variant="h6">Genel Durum</Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center', color: totalPnl >= 0 ? 'success.main' : 'error.main' }}>
-                  {totalPnl >= 0 ? <ArrowUpward /> : <ArrowDownward />}
-                    <Typography variant="h5" component="span" sx={{ fontWeight: 'bold', mx: 1 }}>
-                    {formatMoney(totalPnl)}
-                    </Typography>
-                    <Typography variant="subtitle1">
-                    ({totalPnlPercent.toFixed(2)}%)
-                    </Typography>
-                </Box>
-            </Paper>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={0} sx={{ p: 3, height: '100%', background: totalPnl >= 0 ? 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)' : 'linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)', border: `1px solid ${totalPnl >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, animation: 'slideUp 0.5s ease-out' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+              <Assessment sx={{ color: 'text.secondary', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Genel Durum</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', color: totalPnl >= 0 ? 'success.main' : 'error.main', gap: 0.5 }}>
+              {totalPnl >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
+              <Typography variant="h4" component="span" sx={{ fontWeight: 800 }}>{formatMoney(totalPnl)}</Typography>
+              <Typography variant="h6" sx={{ opacity: 0.8, ml: 0.5 }}>({totalPnlPercent.toFixed(2)}%)</Typography>
+            </Box>
+          </Paper>
         </Grid>
-        <Grid xs={12} md={6}>
-            <Paper variant="outlined" sx={{ p: 2, height: '100%' }}>
-                <Typography><strong>Yatırım Değeri:</strong> {formatMoney(investmentValue)}</Typography>
-                <Typography><strong>Anlık Değer:</strong> {formatMoney(currentValue)}</Typography>
-                <Typography><strong>Bakiye:</strong> {formatMoney(balance)}</Typography>
-            </Paper>
+        <Grid item xs={12} md={6}>
+          <Paper elevation={0} sx={{ p: 3, height: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animation: 'slideUp 0.5s ease-out' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+              <AccountBalance sx={{ color: 'text.secondary', fontSize: 20 }} />
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Değerler</Typography>
+            </Box>
+            {[{ l: 'Yatırım Değeri', v: formatMoney(investmentValue), c: '#7c3aed' }, { l: 'Anlık Değer', v: formatMoney(currentValue), c: '#00d4ff' }, { l: 'Bakiye', v: formatMoney(balance), c: '#10b981' }].map(i => (
+              <Box key={i.l} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>{i.l}</Typography>
+                <Typography variant="body2" sx={{ fontWeight: 700, color: i.c }}>{i.v}</Typography>
+              </Box>
+            ))}
+          </Paper>
         </Grid>
       </Grid>
 
-      {portfolio.holdings.length === 0 ? (
-        <Alert severity="info">Henüz bir varlık edinmemişsiniz.</Alert>
-      ) : (
-        <TableContainer>
+      {portfolio.holdings.length === 0 ? <Alert severity="info">Henüz bir varlık edinmemişsiniz.</Alert> : (
+        <TableContainer component={Paper} elevation={0} sx={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', mb: 4 }}>
           <Table>
-            <TableHead>
-              <TableRow>
-                <TableCell>Sembol</TableCell>
-                <TableCell align="right">Miktar</TableCell>
-                <TableCell align="right">Ort. Alış Fiyatı</TableCell>
-                <TableCell align="right">Anlık Fiyat</TableCell>
-                <TableCell align="right">Toplam Değer</TableCell>
-                <TableCell align="right">Kar/Zarar</TableCell>
-                <TableCell align="right">Kar/Zarar %</TableCell>
-              </TableRow>
-            </TableHead>
+            <TableHead><TableRow>
+              <TableCell>Sembol</TableCell><TableCell align="right">Miktar</TableCell><TableCell align="right">Ort. Alış</TableCell>
+              <TableCell align="right">Anlık Fiyat</TableCell><TableCell align="right">Toplam Değer</TableCell>
+              <TableCell align="right">K/Z</TableCell><TableCell align="right">K/Z %</TableCell>
+            </TableRow></TableHead>
             <TableBody>
-              {portfolio.holdings.map((row) => {
-                const totalValue = row.quantity * row.currentPrice;
-                const pnlPercent = row.avgBuyPrice > 0 ? ((row.currentPrice - row.avgBuyPrice) / row.avgBuyPrice) * 100 : 0;
-                return (
-                  <TableRow key={row.symbol}>
-                    <TableCell component="th" scope="row">{row.symbol}</TableCell>
-                    <TableCell align="right">{row.quantity}</TableCell>
-                    <TableCell align="right">{formatMoney(row.avgBuyPrice)}</TableCell>
-                    <TableCell align="right">{formatMoney(row.currentPrice)}</TableCell>
-                    <TableCell align="right">{formatMoney(totalValue)}</TableCell>
-                    <TableCell align="right" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main' }}>
-                      {formatMoney(row.pnl)}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: pnlPercent >= 0 ? 'success.main' : 'error.main' }}>
-                      {pnlPercent.toFixed(2)}%
-                    </TableCell>
-                  </TableRow>
-                );
+              {portfolio.holdings.map(row => {
+                const tv = row.quantity * row.currentPrice;
+                const pp = row.avgBuyPrice > 0 ? ((row.currentPrice - row.avgBuyPrice) / row.avgBuyPrice) * 100 : 0;
+                return (<TableRow key={row.symbol}>
+                  <TableCell><Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{row.symbol}</Typography></TableCell>
+                  <TableCell align="right">{row.quantity}</TableCell>
+                  <TableCell align="right">{formatMoney(row.avgBuyPrice)}</TableCell>
+                  <TableCell align="right">{formatMoney(row.currentPrice)}</TableCell>
+                  <TableCell align="right">{formatMoney(tv)}</TableCell>
+                  <TableCell align="right"><Typography variant="body2" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{formatMoney(row.pnl)}</Typography></TableCell>
+                  <TableCell align="right"><Typography variant="body2" sx={{ color: pp >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{pp.toFixed(2)}%</Typography></TableCell>
+                </TableRow>);
               })}
             </TableBody>
           </Table>
         </TableContainer>
       )}
 
-      <Paper variant="outlined" sx={{ mt: 4, p: 2 }}>
-        <Typography variant="h6" sx={{ mb: 2 }}>
-          Kazanç / Zarar Grafiği
-        </Typography>
-        <Box sx={{ width: "100%", height: 280 }}>
-          <ResponsiveContainer>
+      <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Kazanç / Zarar Grafiği</Typography>
+        <Box sx={{ width: "100%", height: 320, minHeight: 320 }}>
+          <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={performanceSeries} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="label" tick={{ fontSize: 12 }} />
-              <YAxis tickFormatter={(value) => `${Math.round(toNumber(value))}`} width={70} />
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  if (name === "pnl") return [formatMoney(toNumber(value)), "Kar/Zarar"];
-                  return [formatMoney(toNumber(value)), "Portföy Değeri"];
-                }}
-                labelFormatter={(label) => `Periyot: ${label}`}
-              />
-              <Area type="monotone" dataKey="value" stroke="#1976d2" fill="#90caf9" fillOpacity={0.35} name="value" />
-              <Area type="monotone" dataKey="pnl" stroke="#2e7d32" fill="#a5d6a7" fillOpacity={0.25} name="pnl" />
+              <defs>
+                <linearGradient id="pv" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#00d4ff" stopOpacity={0.3} /><stop offset="95%" stopColor="#00d4ff" stopOpacity={0} /></linearGradient>
+                <linearGradient id="pp" x1="0" y1="0" x2="0" y2="1"><stop offset="5%" stopColor="#10b981" stopOpacity={0.3} /><stop offset="95%" stopColor="#10b981" stopOpacity={0} /></linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} stroke="rgba(255,255,255,0.06)" />
+              <YAxis tickFormatter={v => `${Math.round(toNumber(v))}`} width={70} tick={{ fontSize: 12, fill: '#64748b' }} stroke="rgba(255,255,255,0.06)" />
+              <Tooltip contentStyle={{ backgroundColor: 'rgba(17,22,56,0.95)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 12, color: '#e2e8f0' }}
+                formatter={(value: number, name: string) => name === "pnl" ? [formatMoney(toNumber(value)), "Kar/Zarar"] : [formatMoney(toNumber(value)), "Portföy Değeri"]}
+                labelFormatter={l => `Periyot: ${l}`} />
+              <Area type="monotone" dataKey="value" stroke="#00d4ff" strokeWidth={2} fill="url(#pv)" name="value" />
+              <Area type="monotone" dataKey="pnl" stroke="#10b981" strokeWidth={2} fill="url(#pp)" name="pnl" />
             </AreaChart>
           </ResponsiveContainer>
         </Box>
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
-          <ToggleButtonGroup
-            value={range}
-            exclusive
-            onChange={(_event, next) => {
-              if (next) setRange(next);
-            }}
-            size="small"
-          >
-            <ToggleButton value="1D">1 Day</ToggleButton>
-            <ToggleButton value="1W">1 Week</ToggleButton>
-            <ToggleButton value="1M">1 Month</ToggleButton>
-            <ToggleButton value="1Y">1 Year</ToggleButton>
+          <ToggleButtonGroup value={range} exclusive onChange={(_e, n) => { if (n) setRange(n); }} size="small">
+            <ToggleButton value="1D">1 Gün</ToggleButton>
+            <ToggleButton value="1W">1 Hafta</ToggleButton>
+            <ToggleButton value="1M">1 Ay</ToggleButton>
+            <ToggleButton value="1Y">1 Yıl</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       </Paper>
-    </Paper>
+    </Box>
   );
 }

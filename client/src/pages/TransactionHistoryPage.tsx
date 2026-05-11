@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { TransactionItem } from "../types";
-import { Paper, Typography, Grid, TextField, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Select, MenuItem, FormControl, InputLabel, Chip, Box } from "@mui/material";
+import { Paper, Typography, Grid, TextField, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Select, MenuItem, FormControl, InputLabel, Chip, Box, Pagination } from "@mui/material";
+import { FilterList, History } from "@mui/icons-material";
+import EmptyState from "../components/EmptyState";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -11,17 +13,19 @@ const formatDateTime = (value: string | null): string => {
   return new Date(value).toLocaleString("tr-TR");
 };
 
-const typeColors: Record<string, "success" | "error" | "info" | "warning" | "default"> = {
-    buy: 'success',
-    sell: 'error',
-    deposit: 'info',
-    upgrade: 'warning'
-}
+const typeConfig: Record<string, { color: string; bg: string; border: string }> = {
+  buy: { color: '#10b981', bg: 'rgba(16,185,129,0.12)', border: 'rgba(16,185,129,0.3)' },
+  sell: { color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' },
+  deposit: { color: '#3b82f6', bg: 'rgba(59,130,246,0.12)', border: 'rgba(59,130,246,0.3)' },
+  upgrade: { color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' },
+};
 
 export default function TransactionHistoryPage() {
   const [transactions, setTransactions] = useState<TransactionItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filters, setFilters] = useState({ type: "all", symbol: "", from: "", to: "" });
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const loadTransactions = async () => {
     setLoading(true);
@@ -31,130 +35,131 @@ export default function TransactionHistoryPage() {
       if (filters.symbol.trim()) params.set("symbol", filters.symbol.trim().toUpperCase());
       if (filters.from) params.set("from", new Date(filters.from).toISOString());
       if (filters.to) params.set("to", new Date(filters.to).toISOString());
-
+      params.set("page", page.toString());
+      params.set("limit", "20");
       const query = params.toString();
-      const response = await api.get<TransactionItem[]>(`/transactions/history${query ? `?${query}` : ""}`);
-      setTransactions(response.data);
-    } catch {
-      console.error("İşlemler yüklenemedi");
-    } finally {
-      setLoading(false);
-    }
+      const response = await api.get<{transactions: TransactionItem[], pagination: {totalPages: number}}>(`/transactions/history${query ? `?${query}` : ""}`);
+      setTransactions(response.data.transactions);
+      setTotalPages(response.data.pagination.totalPages);
+    } catch { console.error("İşlemler yüklenemedi"); }
+    finally { setLoading(false); }
   };
 
-  useEffect(() => {
-    loadTransactions();
-  }, []);
+  useEffect(() => { loadTransactions(); }, [page]);
+
+  const handleFilterChange = (field: string, value: string) => {
+    setFilters(prev => ({ ...prev, [field]: value }));
+    setPage(1); // Reset page on filter change
+  };
 
   return (
-    <Paper elevation={3} sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>İşlem Geçmişi</Typography>
+    <Box>
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
+        <History sx={{ color: '#00d4ff', fontSize: 28 }} />
+        <Typography variant="h4" sx={{ fontWeight: 800 }}>İşlem Geçmişi</Typography>
+      </Box>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>Tüm alış, satış ve bakiye işlemlerinizi görüntüleyin</Typography>
 
-      <Grid container spacing={2} sx={{ mb: 3 }}>
-        <Grid xs={12} sm={6} md={3}>
-          <Box>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
-              İşlem Tipi
-            </Typography>
-            <FormControl fullWidth>
-              <Select
-                value={filters.type}
-                onChange={(e) => setFilters((p) => ({ ...p, type: e.target.value }))}
-              >
-                <MenuItem value="all">Tüm İşlem Tipleri</MenuItem>
+      {/* Filters */}
+      <Paper elevation={0} sx={{ p: 2.5, mb: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+          <FilterList sx={{ color: 'text.secondary', fontSize: 18 }} />
+          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Filtreler</Typography>
+        </Box>
+        <Grid container spacing={2}>
+          <Grid item xs={12} sm={6} md={3}>
+            <FormControl fullWidth size="small">
+              <InputLabel>İşlem Tipi</InputLabel>
+              <Select size="small" value={filters.type} label="İşlem Tipi" onChange={(e) => handleFilterChange("type", e.target.value as string)}>
+                <MenuItem value="all">Tüm İşlemler</MenuItem>
+                <MenuItem value="deposit">Yüklemeler</MenuItem>
                 <MenuItem value="buy">Alış</MenuItem>
                 <MenuItem value="sell">Satış</MenuItem>
-                <MenuItem value="deposit">Bakiye Yükleme</MenuItem>
                 <MenuItem value="upgrade">Üyelik Yükseltme</MenuItem>
               </Select>
             </FormControl>
-          </Box>
-        </Grid>
-        <Grid xs={12} sm={6} md={3}>
-          <Box>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
-              Sembol
-            </Typography>
-            <TextField
-              fullWidth
-              placeholder="Örn: BTCUSDT"
-              value={filters.symbol}
-              onChange={(e) => setFilters((p) => ({ ...p, symbol: e.target.value }))}
-            />
-          </Box>
-        </Grid>
-        <Grid xs={12} sm={6} md={2}>
-          <Box>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
-              Başlangıç Tarihi
-            </Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={filters.from}
-              onChange={(e) => setFilters((p) => ({ ...p, from: e.target.value }))}
-            />
-          </Box>
-        </Grid>
-        <Grid xs={12} sm={6} md={2}>
-          <Box>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600 }}>
-              Bitiş Tarihi
-            </Typography>
-            <TextField
-              fullWidth
-              type="date"
-              value={filters.to}
-              onChange={(e) => setFilters((p) => ({ ...p, to: e.target.value }))}
-            />
-          </Box>
-        </Grid>
-        <Grid xs={12} md={2}>
-          <Box>
-            <Typography variant="caption" sx={{ display: "block", mb: 0.5, fontWeight: 600, visibility: "hidden" }}>
-              Filtrele
-            </Typography>
-            <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading} sx={{ height: '56px' }}>
-              {loading ? <CircularProgress size={24} /> : "Filtrele"}
+          </Grid>
+          <Grid item xs={12} sm={6} md={3}>
+            <TextField fullWidth size="small" label="Sembol (Örn: BTC)" value={filters.symbol} onChange={(e) => handleFilterChange("symbol", e.target.value)} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField fullWidth type="date" size="small" label="Başlangıç" InputLabelProps={{ shrink: true }} value={filters.from} onChange={(e) => handleFilterChange("from", e.target.value)} />
+          </Grid>
+          <Grid item xs={12} sm={6} md={2}>
+            <TextField fullWidth type="date" size="small" label="Bitiş" InputLabelProps={{ shrink: true }} value={filters.to} onChange={(e) => handleFilterChange("to", e.target.value)} />
+          </Grid>
+          <Grid item xs={12} sm={12} md={2}>
+            <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading}
+              sx={{ height: '40px', background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)', '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' } }}>
+              {loading ? <CircularProgress size={20} /> : "Filtrele"}
             </Button>
-          </Box>
+          </Grid>
         </Grid>
-      </Grid>
+      </Paper>
 
+      {/* Table */}
       {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center' }}><CircularProgress /></Box>
-      ) : transactions.length === 0 ? (
-        <Alert severity="info">Filtrelerinize uygun işlem bulunamadı.</Alert>
+        <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
+      ) : !loading && transactions.length === 0 ? (
+        <EmptyState 
+          title="İşlem Bulunamadı" 
+          description="Filtrelerinize uygun herhangi bir işlem kaydı bulunamadı."
+          icon="search"
+        />
       ) : (
-        <TableContainer>
+        <TableContainer component={Paper} elevation={0} sx={{
+          background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
+          '& .MuiTableCell-root': { borderColor: 'rgba(255,255,255,0.06)' }
+        }}>
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Tarih</TableCell>
-                <TableCell>Tip</TableCell>
-                <TableCell>Sembol</TableCell>
-                <TableCell align="right">Miktar</TableCell>
-                <TableCell align="right">Fiyat</TableCell>
-                <TableCell align="right">Toplam</TableCell>
+                <TableCell>Tarih</TableCell><TableCell>Tip</TableCell><TableCell>Sembol</TableCell>
+                <TableCell align="right">Miktar</TableCell><TableCell align="right">Fiyat</TableCell><TableCell align="right">Toplam</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {transactions.map((tx) => (
-                <TableRow key={tx._id}>
-                  <TableCell>{formatDateTime(tx.createdAt)}</TableCell>
-                  <TableCell>
-                    <Chip label={tx.type.toUpperCase()} color={typeColors[tx.type] || 'default'} size="small" />
-                  </TableCell>
-                  <TableCell>{tx.symbol || '-'}</TableCell>
-                  <TableCell align="right">{tx.quantity || '-'}</TableCell>
-                  <TableCell align="right">{tx.price ? formatMoney(tx.price) : '-'}</TableCell>
-                  <TableCell align="right">{formatMoney(tx.total)}</TableCell>
-                </TableRow>
-              ))}
+              {transactions.map((tx) => {
+                const tc = typeConfig[tx.type] || typeConfig.deposit;
+                return (
+                  <TableRow key={tx._id}>
+                    <TableCell><Typography variant="caption" sx={{ color: 'text.secondary' }}>{formatDateTime(tx.createdAt)}</Typography></TableCell>
+                    <TableCell>
+                      <Chip label={tx.type.toUpperCase()} size="small" sx={{ fontSize: '0.65rem', fontWeight: 700, height: 22, backgroundColor: tc.bg, color: tc.color, border: `1px solid ${tc.border}` }} />
+                    </TableCell>
+                    <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4ff' }}>{tx.symbol || '-'}</Typography></TableCell>
+                    <TableCell align="right">{tx.quantity || '-'}</TableCell>
+                    <TableCell align="right">{tx.price ? formatMoney(tx.price) : '-'}</TableCell>
+                    <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatMoney(tx.total)}</Typography></TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>
       )}
-    </Paper>
+
+      {!loading && totalPages > 1 && (
+        <Box sx={{ display: 'flex', justifyContent: 'center', mt: 3 }}>
+          <Pagination 
+            count={totalPages} 
+            page={page} 
+            onChange={(_, val) => setPage(val)} 
+            color="primary" 
+            sx={{
+              '& .MuiPaginationItem-root': {
+                color: 'text.secondary',
+                '&.Mui-selected': {
+                  background: 'linear-gradient(135deg, rgba(0,212,255,0.2) 0%, rgba(124,58,237,0.2) 100%)',
+                  color: '#00d4ff',
+                  fontWeight: 700,
+                  border: '1px solid rgba(0,212,255,0.3)'
+                }
+              }
+            }}
+          />
+        </Box>
+      )}
+    </Box>
   );
 }

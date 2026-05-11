@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import { requireAuth } from "../middleware/auth";
 
 const router = Router();
 
@@ -42,7 +43,7 @@ const isInvestmentQuestion = (message: string): boolean => {
   return investmentKeywords.some((keyword) => message.toLowerCase().includes(keyword));
 };
 
-router.post("/chat", async (req, res) => {
+router.post("/chat", requireAuth, async (req, res) => {
   try {
     const message = String(req.body.message || "").trim();
 

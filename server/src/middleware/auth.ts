@@ -6,7 +6,7 @@ export interface AuthRequest extends Request {
   user?: IUser;
 }
 
-const secret = process.env.JWT_SECRET || "dev_secret";
+const getSecret = (): string => process.env.JWT_SECRET || "dev_secret";
 
 export const requireAuth = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   const token = req.headers.authorization?.replace("Bearer ", "");
@@ -17,7 +17,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
   }
 
   try {
-    const payload = jwt.verify(token, secret) as { id: string };
+    const payload = jwt.verify(token, getSecret()) as { id: string };
     const user = await User.findById(payload.id).select("-password");
 
     if (!user) {

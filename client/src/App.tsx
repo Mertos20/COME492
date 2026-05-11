@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { BrowserRouter as Router, Routes, Route, Navigate } from "react-router-dom";
+import { useSnackbar } from "notistack";
 import { api, setApiToken } from "./api";
 import type { AuthUser, MarketInstrument } from "./types";
 
@@ -15,12 +16,14 @@ import ChatPage from "./pages/ChatPage";
 import ExpertPanelPage from "./pages/ExpertPanelPage";
 import BalanceLoadPage from "./pages/BalanceLoadPage";
 import NewsPage from "./pages/NewsPage";
+import ProfilePage from "./pages/ProfilePage";
 
 const plans = ["free", "bronze", "silver", "gold"] as const;
 
-const normalizeUser = (raw: Partial<AuthUser>): AuthUser => ({
+const normalizeUser = (raw: Partial<AuthUser & { email?: string }>): AuthUser => ({
   id: raw.id || "",
   fullName: raw.fullName || "Kullanici",
+  email: raw.email || "",
   role: raw.role === "expert" ? "expert" : "user",
   membership: raw.membership && plans.includes(raw.membership) ? raw.membership : "free"
 });
@@ -29,9 +32,31 @@ function App() {
   const [token, setToken] = useState<string | null>(localStorage.getItem("token"));
   const [user, setUser] = useState<AuthUser | null>(null);
   const [balance, setBalance] = useState(0);
-  const [popular, setPopular] = useState<MarketInstrument[]>([]);
-  const [markets, setMarkets] = useState<MarketInstrument[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const { enqueueSnackbar } = useSnackbar();
+
+  useEffect(() => {
+    const handleOnline = () => {
+      setIsOffline(false);
+      enqueueSnackbar("İnternet bağlantısı sağlandı.", { variant: "success" });
+    };
+    const handleOffline = () => {
+      setIsOffline(true);
+      enqueueSnackbar("İnternet bağlantısı koptu. Uygulama çevrimdışı modda çalışıyor.", { 
+        variant: "error",
+        autoHideDuration: null 
+      });
+    };
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, [enqueueSnackbar]);
 
   useEffect(() => {
     setApiToken(token);
@@ -39,17 +64,7 @@ function App() {
 
   useEffect(() => {
     const loadInitial = async () => {
-      // Load markets
-      try {
-        const [popularRes, allRes] = await Promise.all([
-          api.get<MarketInstrument[]>("/markets/popular"),
-          api.get<MarketInstrument[]>("/markets/all")
-        ]);
-        setPopular(popularRes.data);
-        setMarkets(allRes.data);
-      } catch {
-        console.error("Market data failed");
-      }
+
 
       // Load user if token exists
       if (token) {
@@ -83,9 +98,18 @@ function App() {
     setBalance(0);
   };
 
-  const handleUpgrade = (newMembership: AuthUser["membership"]) => {
+  const handleUpgrade = async (newMembership: AuthUser["membership"]) => {
     if (user) {
       setUser({ ...user, membership: newMembership });
+    }
+    // Refresh balance from server after membership purchase
+    if (token) {
+      try {
+        const res = await api.get<{ user: AuthUser; balance: number }>("/auth/me");
+        setBalance(res.data.balance);
+      } catch {
+        console.error("Failed to refresh balance after upgrade");
+      }
     }
   };
 
@@ -100,12 +124,52 @@ function App() {
     }
   };
 
+  const handleProfileUpdate = (updatedUser: AuthUser, newToken: string) => {
+    localStorage.setItem("token", newToken);
+    setToken(newToken);
+    setUser(normalizeUser(updatedUser));
+  };
+
+  const handleMembershipCancel = (newToken: string) => {
+    localStorage.setItem("token", newToken);
+    setToken(newToken);
+    if (user) setUser({ ...user, membership: "free" });
+  };
+
   if (loading) {
     return (
-      <div className="layout">
-        <div className="panel" style={{ textAlign: "center", padding: "40px" }}>
-          <p>Yukleniyor...</p>
+      <div style={{
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        justifyContent: 'center',
+        height: '100vh',
+        background: '#0a0e27',
+        gap: '24px',
+      }}>
+        <div style={{
+          width: 64,
+          height: 64,
+          borderRadius: 16,
+          background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          animation: 'pulse 2s ease-in-out infinite',
+          boxShadow: '0 0 40px rgba(0, 212, 255, 0.3)',
+        }}>
+          <span style={{ fontSize: 28, fontWeight: 900, color: '#fff' }}>P</span>
         </div>
+        <p style={{
+          color: '#94a3b8',
+          fontFamily: "'Inter', sans-serif",
+          fontSize: '0.875rem',
+          fontWeight: 500,
+          letterSpacing: '0.1em',
+          textTransform: 'uppercase',
+        }}>
+          Yükleniyor...
+        </p>
       </div>
     );
   }
@@ -115,15 +179,15 @@ function App() {
       {!token ? (
         <LoginRegisterPage onAuthSuccess={handleAuthSuccess} />
       ) : (
-        <Layout user={user} balance={balance} onLogout={handleLogout} activePage={window.location.pathname}>
+        <Layout user={user} balance={balance} onLogout={handleLogout}>
           <Routes>
             <Route path="/" element={<DashboardPage />} />
-            <Route path="/markets" element={<MarketsPage markets={markets} popular={popular} />} />
+            <Route path="/markets" element={<MarketsPage />} />
             <Route path="/news" element={<NewsPage />} />
-            <Route path="/subscriptions" element={<SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} />} />
+            <Route path="/subscriptions" element={<SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} onBalanceChange={setBalance} />} />
             <Route
               path="/deposit"
-              element={user?.role === "user" ? <BalanceLoadPage /> : <Navigate to="/" />}
+              element={user?.role === "user" ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />}
             />
             <Route
               path="/trading"
@@ -145,9 +209,12 @@ function App() {
               path="/expert"
               element={user?.role === "expert" ? <ExpertPanelPage user={user} token={token} /> : <Navigate to="/" />}
             />
+            <Route path="/load-balance" element={user?.role === "user" ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />} />
+            <Route
+              path="/profile"
+              element={<ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
+            />
             <Route path="*" element={<Navigate to="/" />} />
-            <Route path="/balance-load" element={<BalanceLoadPage />} />
-            <Route path="/load-balance" element={<BalanceLoadPage />} />
           </Routes>
         </Layout>
       )}

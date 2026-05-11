@@ -42,8 +42,24 @@ router.get("/history", requireAuth, async (req: AuthRequest, res) => {
     }
   }
 
-  const transactions = await Transaction.find(query).sort({ createdAt: -1 }).lean();
-  res.json(transactions);
+  const page = Math.max(1, parseInt(req.query.page as string) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 20));
+  const skip = (page - 1) * limit;
+
+  const [transactions, total] = await Promise.all([
+    Transaction.find(query).sort({ createdAt: -1 }).skip(skip).limit(limit).lean(),
+    Transaction.countDocuments(query)
+  ]);
+
+  res.json({
+    transactions,
+    pagination: {
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit)
+    }
+  });
 });
 
 export default router;

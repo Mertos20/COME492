@@ -1,42 +1,13 @@
 import { Router } from "express";
-import nodemailer from "nodemailer";
 import { AuthRequest, requireAuth } from "../middleware/auth";
 import User from "../models/User";
 import Transaction from "../models/Transaction";
+import { sendEmailCode } from "../utils/mailer";
 
 const router = Router();
 
 // In-memory store for verification codes for simplicity
 const verificationCodes: Record<string, { code: string; amount: number; expires: number }> = {};
-
-const smtpPort = Number(process.env.EMAIL_PORT || 587);
-const smtpHost = process.env.EMAIL_HOST;
-const smtpUser = process.env.EMAIL_USER;
-const smtpPass = process.env.EMAIL_PASS?.replace(/\s+/g, "");
-const emailFrom = process.env.EMAIL_FROM || smtpUser;
-
-const mailTransporter =
-  smtpHost && smtpUser && smtpPass
-    ? nodemailer.createTransport({
-        host: smtpHost,
-        port: smtpPort,
-        secure: smtpPort === 465,
-        auth: { user: smtpUser, pass: smtpPass }
-      })
-    : null;
-
-const sendVerificationEmail = async (email: string, code: string) => {
-  if (!mailTransporter || !emailFrom) {
-    throw new Error("SMTP ayarlari eksik. EMAIL_HOST/EMAIL_PORT/EMAIL_USER/EMAIL_PASS/EMAIL_FROM tanimlayin.");
-  }
-
-  await mailTransporter.sendMail({
-    from: emailFrom,
-    to: email,
-    subject: "Bakiye Yukleme Dogrulama Kodu",
-    text: `Dogrulama kodunuz: ${code}. Bu kod 10 dakika gecerlidir.`
-  });
-};
 
 router.post("/deposit", requireAuth, async (req: AuthRequest, res) => {
   try {
@@ -46,7 +17,7 @@ router.post("/deposit", requireAuth, async (req: AuthRequest, res) => {
       return res.status(400).json({ message: "Gecersiz tutar" });
     }
 
-    const userId = req.user?._id;
+    const userId = req.user?.id;
     if (!userId) {
       return res.status(404).json({ message: "Kullanici bulunamadi" });
     }
@@ -100,25 +71,28 @@ router.post("/request-load", requireAuth, async (req: AuthRequest, res) => {
     return res.status(400).json({ message: "Gecersiz tutar" });
   }
 
-  // Basic client-side-like validation on server as a safeguard.
   if (String(cardNumber).replace(/\s+/g, "").length < 12 || String(cvv).length < 3) {
     return res.status(400).json({ message: "Kart bilgileri gecersiz." });
   }
 
-  const user = await User.findById(userId);
+  const user = req.user;
   if (!user) {
     return res.status(404).json({ message: "Kullanıcı bulunamadı." });
   }
 
-  // Generate a 6-digit verification code
+  console.log(`[DEBUG] Attempting to send deposit email to: ${user.email}`);
+
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   const expires = Date.now() + 10 * 60 * 1000; // 10 minutes
 
   verificationCodes[userId] = { code, amount: parsedAmount, expires };
 
   try {
-    await sendVerificationEmail(user.email, code);
-    res.status(200).json({ message: "Doğrulama kodu gönderildi." });
+    await sendEmailCode(user.email, code, 'deposit');
+    res.status(200).json({ 
+      message: "Doğrulama kodu gönderildi.",
+      simulationCode: code 
+    });
   } catch (error) {
     console.error("E-posta gönderme hatası:", error);
     res.status(500).json({ message: "Doğrulama kodu gönderilemedi." });
