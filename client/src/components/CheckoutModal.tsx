@@ -16,18 +16,13 @@ interface CheckoutModalProps {
 }
 
 const formatCardNumber = (value: string) => {
-  const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-  const matches = v.match(/\d{4,16}/g);
-  const match = matches && matches[0] || '';
-  const parts = [];
-  for (let i = 0, len = match.length; i < len; i += 4) {
-    parts.push(match.substring(i, i + 4));
+  // Sadece rakamları al ve 16 karakterle sınırla
+  const onlyNums = value.replace(/[^0-9]/g, '').substring(0, 16);
+  if (!onlyNums) {
+    return '';
   }
-  if (parts.length) {
-    return parts.join(' ');
-  } else {
-    return value;
-  }
+  // Her 4 karakterden sonra bir boşluk ekle
+  return onlyNums.replace(/(\d{4})/g, '$1 ').trim();
 };
 
 const formatExpiry = (value: string) => {
@@ -47,11 +42,54 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
   const [cvc, setCvc] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [simulationCode, setSimulationCode] = useState('');
+  const [errors, setErrors] = useState({
+    cardName: '',
+    cardNumber: '',
+    expiry: '',
+    cvc: '',
+  });
+
+  const validate = () => {
+    const newErrors = { cardName: '', cardNumber: '', expiry: '', cvc: '' };
+    let isValid = true;
+
+    if (!/^[a-zA-Z\s]+$/.test(cardName)) {
+      newErrors.cardName = 'Sadece harf girilebilir.';
+      isValid = false;
+    }
+
+    if (cardNumber.replace(/\s/g, '').length !== 16) {
+      newErrors.cardNumber = '16 haneli olmalıdır.';
+      isValid = false;
+    }
+
+    if (expiry.length < 5) {
+      newErrors.expiry = 'Geçerli bir tarih girin.';
+      isValid = false;
+    } else {
+      const [month, year] = expiry.split('/');
+      const expiryDate = new Date(Number(`20${year}`), Number(month) - 1);
+      const now = new Date();
+      now.setHours(0, 0, 0, 0);
+      if (expiryDate < now) {
+        newErrors.expiry = 'Geçmiş tarih seçilemez.';
+        isValid = false;
+      }
+    }
+
+    if (cvc.length !== 3) {
+      newErrors.cvc = '3 haneli olmalıdır.';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (step === 1) {
-      if (cardNumber.length < 19 || expiry.length < 5 || cvc.length < 3 || !cardName) return;
+      if (!validate()) return;
       
       setLoading(true);
       try {
@@ -177,49 +215,58 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
             <Grid container spacing={2}>
               <Grid item xs={12}>
                 <TextField
-                  fullWidth
                   label="Kart Üzerindeki İsim"
-                  variant="outlined"
                   value={cardName}
-                  onChange={(e) => setCardName(e.target.value)}
-                  disabled={loading}
-                  required
-                />
-              </Grid>
-              <Grid item xs={12}>
-                <TextField
+                  onChange={(e) => setCardName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                   fullWidth
+                  variant="filled"
+                  margin="normal"
+                  error={!!errors.cardName}
+                  helperText={errors.cardName}
+                />
+                <TextField
                   label="Kart Numarası"
-                  variant="outlined"
                   value={cardNumber}
                   onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
+                  fullWidth
+                  variant="filled"
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><CreditCard /></InputAdornment>,
+                  }}
                   inputProps={{ maxLength: 19 }}
-                  disabled={loading}
-                  required
+                  error={!!errors.cardNumber}
+                  helperText={errors.cardNumber}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
-                  fullWidth
-                  label="Son Kullanma (AA/YY)"
-                  variant="outlined"
+                  label="Son Kul. Tarihi (AA/YY)"
                   value={expiry}
                   onChange={(e) => setExpiry(formatExpiry(e.target.value))}
-                  inputProps={{ maxLength: 5 }}
-                  disabled={loading}
-                  required
+                  fullWidth
+                  variant="filled"
+                  margin="normal"
+                  placeholder="AA/YY"
+                  error={!!errors.expiry}
+                  helperText={errors.expiry}
                 />
               </Grid>
               <Grid item xs={6}>
                 <TextField
-                  fullWidth
                   label="CVC"
-                  variant="outlined"
                   value={cvc}
-                  onChange={(e) => setCvc(e.target.value.replace(/\D/g, ''))}
-                  inputProps={{ maxLength: 4 }}
-                  disabled={loading}
-                  required
+                  onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
+                  fullWidth
+                  variant="filled"
+                  margin="normal"
+                  
+                  InputProps={{
+                    startAdornment: <InputAdornment position="start"><Lock /></InputAdornment>,
+                  }}
+                  inputProps={{ maxLength: 3 }}
+                  error={!!errors.cvc}
+                  helperText={errors.cvc}
                 />
               </Grid>
             </Grid>
