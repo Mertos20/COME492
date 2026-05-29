@@ -69,20 +69,7 @@ export default function NewsPage() {
           ))}
         </Stack>
 
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <TextField fullWidth value={searchInput} onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={scope === "global" ? "Örnek: fed OR inflation OR bitcoin" : "Örnek: borsa OR faiz OR bitcoin"}
-            size="small"
-            slotProps={{ input: { startAdornment: <Search sx={{ mr: 1, color: 'text.secondary', fontSize: '1.2rem' }} /> } }} />
-          <Button onClick={() => setQuery(searchInput.trim() || (scope === "global" ? "finance OR economy OR market OR stocks OR crypto" : "finance OR economy OR market OR borsa OR crypto"))}
-            sx={{
-              minWidth: 100, fontWeight: 700,
-              background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
-              color: '#0a0e27', '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' },
-            }}>
-            Ara
-          </Button>
-        </Stack>
+       
       </Box>
 
       {warning && !loading && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
