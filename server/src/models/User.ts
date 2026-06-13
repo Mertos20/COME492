@@ -26,6 +26,7 @@ export interface IUser extends Document {
   resetPasswordExpires?: Date;
   username: string;
   isAdmin: boolean;
+  isFrozen: boolean;
   aiQueriesToday: number;
   lastAiQueryDate: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -61,6 +62,7 @@ const UserSchema = new Schema<IUser>(
     resetPasswordExpires: { type: Date },
     username: { type: String },
     isAdmin: { type: Boolean, default: false },
+    isFrozen: { type: Boolean, default: false },
     aiQueriesToday: { type: Number, default: 0 },
     lastAiQueryDate: { type: String, default: "" },
   },

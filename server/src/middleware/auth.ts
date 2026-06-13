@@ -25,6 +25,11 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
       return;
     }
 
+    if (user.isFrozen) {
+      res.status(403).json({ message: "Hesabınız dondurulmuştur." });
+      return;
+    }
+
     req.user = user;
     next();
   } catch (error) {

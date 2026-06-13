@@ -71,19 +71,13 @@ router.get('/users', requireAuth, admin, async (req, res) => {
 // @access  Admin
 router.put('/users/:id', requireAuth, admin, async (req, res) => {
   try {
-    const { balance, role, membership, expertTier, username, fullName } = req.body;
+    const { role, membership, expertTier } = req.body;
     
     const user = await User.findById(req.params.id);
     if (!user) {
       return res.status(404).json({ msg: 'User not found' });
     }
 
-    if (balance !== undefined) {
-      if (Number(balance) < 0) {
-        return res.status(400).json({ msg: 'Balance cannot be negative' });
-      }
-      user.balance = balance;
-    }
     if (role !== undefined) user.role = role;
     if (membership !== undefined) user.membership = membership;
     
@@ -93,9 +87,6 @@ router.put('/users/:id', requireAuth, admin, async (req, res) => {
     } else {
       user.expertTier = undefined;
     }
-
-    if (username !== undefined) user.username = username;
-    if (fullName !== undefined) user.fullName = fullName;
 
     await user.save();
     
@@ -113,21 +104,7 @@ router.put('/users/:id', requireAuth, admin, async (req, res) => {
 // @desc    Update user balance (kept for backward compatibility)
 // @access  Admin
 router.put('/users/:id/balance', requireAuth, admin, async (req, res) => {
-  try {
-    const user = await User.findById(req.params.id);
-    if (!user) {
-      return res.status(404).json({ msg: 'User not found' });
-    }
-    user.balance = req.body.balance;
-    if (user.balance < 0) {
-      return res.status(400).json({ msg: 'Balance cannot be negative' });
-    }
-    await user.save();
-    res.json(user);
-  } catch (err: any) {
-    console.error(err.message);
-    res.status(500).send('Server Error');
-  }
+  return res.status(403).json({ msg: 'Bakiyeye müdahale yetkisi kaldırılmıştır.' });
 });
 
 // @route   DELETE api/admin/users/:id
@@ -140,6 +117,24 @@ router.delete('/users/:id', requireAuth, admin, async (req, res) => {
             return res.status(404).json({ msg: 'User not found' });
         }
         res.json({ msg: 'User removed' });
+    } catch (err: any) {
+        console.error(err.message);
+        res.status(500).send('Server Error');
+    }
+});
+
+// @route   PUT api/admin/users/:id/freeze
+// @desc    Toggle user freeze status
+// @access  Admin
+router.put('/users/:id/freeze', requireAuth, admin, async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ msg: 'User not found' });
+        }
+        user.isFrozen = !user.isFrozen;
+        await user.save();
+        res.json({ msg: `User ${user.isFrozen ? 'frozen' : 'unfrozen'}`, isFrozen: user.isFrozen });
     } catch (err: any) {
         console.error(err.message);
         res.status(500).send('Server Error');

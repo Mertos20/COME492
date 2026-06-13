@@ -93,5 +93,6 @@ export interface IUser {
   balance: number;
   lockedBalance: number;
   isAdmin: boolean;
+  isFrozen: boolean;
 }
 

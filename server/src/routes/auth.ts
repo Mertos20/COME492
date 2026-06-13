@@ -90,6 +90,11 @@ router.post("/login", async (req, res) => {
     return;
   }
 
+  if (user.isFrozen) {
+    res.status(403).json({ message: "Hesabınız dondurulmuştur." });
+    return;
+  }
+
   const valid = await bcrypt.compare(password, user.passwordHash || (user as any).password);
   if (!valid) {
     res.status(401).json({ message: "E-posta veya sifre hatali" });

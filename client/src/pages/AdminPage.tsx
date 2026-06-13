@@ -39,7 +39,9 @@ import {
   FilterAlt,
   Close,
   AttachMoney,
-  Person
+  Person,
+  Lock,
+  LockOpen
 } from '@mui/icons-material';
 import {
   AreaChart,
@@ -180,6 +182,18 @@ export default function AdminPage() {
         console.error(err);
         enqueueSnackbar('Kullanıcı silinirken hata oluştu.', { variant: 'error' });
       }
+    }
+  };
+
+  const handleToggleFreeze = async (user: IUser) => {
+    try {
+      const res = await api.put(`/admin/users/${user._id}/freeze`);
+      const isFrozen = res.data.isFrozen;
+      enqueueSnackbar(isFrozen ? 'Kullanıcı hesabı donduruldu.' : 'Kullanıcı hesabı aktifleştirildi.', { variant: 'success' });
+      setUsers(users.map(u => u._id === user._id ? { ...u, isFrozen } : u));
+    } catch (err) {
+      console.error(err);
+      enqueueSnackbar('İşlem sırasında hata oluştu.', { variant: 'error' });
     }
   };
 
@@ -539,11 +553,11 @@ export default function AdminPage() {
                             <Person sx={{ color: '#00d4ff', fontSize: 18 }} />
                           </Box>
                           <Box>
-                            <Typography variant="body2" sx={{ fontWeight: 700, color: 'text.primary' }}>
+                            <Typography variant="body2" sx={{ fontWeight: 700, color: user.isFrozen ? 'text.secondary' : 'text.primary', textDecoration: user.isFrozen ? 'line-through' : 'none' }}>
                               {user.fullName}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              @{user.username || 'username'}
+                              @{user.username || 'username'} {user.isFrozen && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>(Donduruldu)</span>}
                             </Typography>
                           </Box>
                         </Box>
@@ -599,15 +613,26 @@ export default function AdminPage() {
                             </IconButton>
                           </MuiTooltip>
                           {!user.isAdmin && (
-                            <MuiTooltip title="Kullanıcıyı Sil">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteUser(user._id)}
-                                sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
-                              >
-                                <Delete sx={{ fontSize: 20 }} />
-                              </IconButton>
-                            </MuiTooltip>
+                            <>
+                              <MuiTooltip title={user.isFrozen ? "Hesabı Aç (Unfreeze)" : "Hesabı Dondur (Freeze)"}>
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleToggleFreeze(user)}
+                                  sx={{ color: user.isFrozen ? '#10b981' : '#f59e0b', '&:hover': { background: user.isFrozen ? 'rgba(16, 185, 129, 0.1)' : 'rgba(245, 158, 11, 0.1)' } }}
+                                >
+                                  {user.isFrozen ? <LockOpen sx={{ fontSize: 20 }} /> : <Lock sx={{ fontSize: 20 }} />}
+                                </IconButton>
+                              </MuiTooltip>
+                              <MuiTooltip title="Kullanıcıyı Sil">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => handleDeleteUser(user._id)}
+                                  sx={{ color: '#ef4444', '&:hover': { background: 'rgba(239, 68, 68, 0.1)' } }}
+                                >
+                                  <Delete sx={{ fontSize: 20 }} />
+                                </IconButton>
+                              </MuiTooltip>
+                            </>
                           )}
                         </Box>
                       </TableCell>
@@ -723,6 +748,7 @@ export default function AdminPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                disabled
                 label="Ad Soyad"
                 value={editForm.fullName}
                 onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
@@ -749,6 +775,7 @@ export default function AdminPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                disabled
                 label="Kullanıcı Adı"
                 value={editForm.username}
                 onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
@@ -768,6 +795,7 @@ export default function AdminPage() {
             <Grid item xs={12}>
               <TextField
                 fullWidth
+                disabled
                 label="Bakiye"
                 type="number"
                 value={editForm.balance}
