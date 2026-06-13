@@ -12,7 +12,7 @@ const formatDate = (value: string): string =>
 export default function NewsPage() {
   const [scope, setScope] = useState<"tr" | "global">("tr");
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [query, setQuery] = useState("finance OR economy OR market OR borsa OR crypto");
+  const [query, setQuery] = useState("ekonomi OR finans OR borsa OR kripto OR yatırım");
   const [searchInput, setSearchInput] = useState(query);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -71,7 +71,7 @@ export default function NewsPage() {
         </Typography>
 
         <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          {[{ v: "tr" as const, l: "🇹🇷 Türkçe", dq: "finance OR economy OR market OR borsa OR crypto" },
+          {[{ v: "tr" as const, l: "🇹🇷 Türkçe", dq: "ekonomi OR finans OR borsa OR kripto OR yatırım" },
             { v: "global" as const, l: "🌍 Yabancı", dq: "finance OR economy OR market OR stocks OR crypto" }
           ].map(s => (
             <Chip key={s.v} label={s.l} clickable
@@ -183,4 +183,3 @@ export default function NewsPage() {
     </Box>
   );
 }
-

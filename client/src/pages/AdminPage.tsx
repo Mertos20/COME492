@@ -46,6 +46,8 @@ import {
 import {
   AreaChart,
   Area,
+  BarChart,
+  Bar,
   XAxis,
   YAxis,
   CartesianGrid,
@@ -196,6 +198,21 @@ export default function AdminPage() {
       enqueueSnackbar('İşlem sırasında hata oluştu.', { variant: 'error' });
     }
   };
+
+  // Prepare volume chart data (mock 30 days)
+  const volumeChartData = React.useMemo(() => {
+    return Array.from({ length: 30 }).map((_, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - (29 - i));
+      const base = 50000;
+      const wave = Math.sin(i / 3) * 20000;
+      const noise = Math.random() * 30000;
+      return {
+        date: d.toLocaleDateString('tr-TR', { day: '2-digit', month: 'short' }),
+        Hacim: Math.floor(base + wave + noise)
+      };
+    });
+  }, []);
 
   if (loading) {
     return (
@@ -366,12 +383,13 @@ export default function AdminPage() {
         <Paper
           elevation={0}
           className="glass-card"
-          sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', height: '430px' }}
+          sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: 420 }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
             Kullanıcı Bakiyeleri (En Yüksek 15)
           </Typography>
-          <ResponsiveContainer width="100%" height={320}>
+          <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={balanceChartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorBakiye" x1="0" y1="0" x2="0" y2="1">
@@ -391,6 +409,7 @@ export default function AdminPage() {
               <Area type="monotone" dataKey="Bakiye" stroke="#00d4ff" strokeWidth={2} fillOpacity={1} fill="url(#colorBakiye)" />
             </AreaChart>
           </ResponsiveContainer>
+          </Box>
         </Paper>
       </Grid>
 
@@ -398,20 +417,20 @@ export default function AdminPage() {
         <Paper
           elevation={0}
           className="glass-card"
-          sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', height: '430px', display: 'flex', flexDirection: 'column' }}
+          sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', height: 420, display: 'flex', flexDirection: 'column' }}
         >
-          <Typography variant="h6" sx={{ fontWeight: 700, mb: 1, color: 'text.primary' }}>
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
             Üyelik Dağılımı
           </Typography>
-          <Box sx={{ flexGrow: 1, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-            <ResponsiveContainer width="100%" height={260}>
+          <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+            <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={pieData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
+                  innerRadius={70}
+                  outerRadius={100}
                   paddingAngle={5}
                   dataKey="value"
                 >
@@ -431,6 +450,41 @@ export default function AdminPage() {
         </Paper>
       </Grid>
 
+      {/* VOLUME CHART SECTION */}
+      <Grid item xs={12}>
+        <Paper
+          elevation={0}
+          className="glass-card"
+          sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: 380 }}
+        >
+          <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
+            Son 30 Günlük İşlem Hacmi (Tahmini)
+          </Typography>
+          <Box sx={{ flexGrow: 1, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={volumeChartData} margin={{ top: 10, right: 30, left: 10, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorHacim" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0.2}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickMargin={10} minTickGap={30} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₺${val >= 1000 ? val / 1000 + 'k' : val}`} />
+                <ChartTooltip
+                  contentStyle={{ background: '#111638', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
+                  labelStyle={{ color: '#ffffff', fontWeight: 700, marginBottom: '8px' }}
+                  itemStyle={{ color: '#10b981' }}
+                  formatter={(val: number) => [formatMoney(val), 'Hacim']}
+                />
+                <Bar dataKey="Hacim" fill="url(#colorHacim)" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Box>
+        </Paper>
+      </Grid>
+
       {/* USER MANAGEMENT SECTION */}
       <Grid item xs={12}>
         <Paper
@@ -438,13 +492,13 @@ export default function AdminPage() {
           className="glass-card-static"
           sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px' }}
         >
-          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 3 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', lg: 'center' }, gap: 2, mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
               Kullanıcı Yönetimi ({filteredUsers.length} Listeleniyor)
             </Typography>
             
             {/* SEARCH AND FILTERS TOOLBAR */}
-            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.5, alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', width: { xs: '100%', lg: 'auto' } }}>
               <TextField
                 size="small"
                 placeholder="İsim, Email veya Kullanıcı adı..."
@@ -458,7 +512,8 @@ export default function AdminPage() {
                   ),
                 }}
                 sx={{
-                  width: { xs: '100%', sm: '260px' },
+                  flex: { xs: 1, sm: 'none' },
+                  minWidth: { xs: '100%', sm: '260px' },
                   '& .MuiOutlinedInput-root': {
                     color: 'text.primary',
                     background: 'rgba(255,255,255,0.03)',
@@ -470,7 +525,7 @@ export default function AdminPage() {
                 }}
               />
 
-              <FormControl size="small" sx={{ width: '130px' }}>
+              <FormControl size="small" sx={{ minWidth: '130px', flex: { xs: 1, sm: 'none' } }}>
                 <InputLabel id="role-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>Rol Filtresi</InputLabel>
                 <Select
                   labelId="role-filter-label"
@@ -492,7 +547,7 @@ export default function AdminPage() {
                 </Select>
               </FormControl>
 
-              <FormControl size="small" sx={{ width: '140px' }}>
+              <FormControl size="small" sx={{ minWidth: '140px', flex: { xs: 1, sm: 'none' } }}>
                 <InputLabel id="membership-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>Üyelik Filtresi</InputLabel>
                 <Select
                   labelId="membership-filter-label"

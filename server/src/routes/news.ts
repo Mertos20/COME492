@@ -94,7 +94,7 @@ router.get("/finance", requireAuth, async (req, res) => {
     const max = Number.isFinite(requestedLimit) ? Math.min(Math.max(requestedLimit, 1), 10) : 10;
     const query = (req.query.q as string) || (scope === "global"
       ? "finance OR economy OR market OR stocks OR crypto"
-      : "finance OR economy OR market OR borsa OR crypto");
+      : "ekonomi OR finans OR borsa OR kripto OR yatırım");
     const cacheKey = buildCacheKey(query, lang, max, scope);
     const now = Date.now();
 
@@ -112,15 +112,22 @@ router.get("/finance", requireAuth, async (req, res) => {
       token: apiKey
     });
 
-    const sanitizedQuery = query.replace(/\s+OR\s+/gi, " ").trim();
+    const fallbackSearch = new URLSearchParams({
+      q: scope === "global" ? "finance" : "ekonomi",
+      lang,
+      max: String(max),
+      sortby: "publishedAt",
+      token: apiKey
+    });
+
     const fallbackHeadlineParams = new URLSearchParams({
-      topic: "business",
+      category: "business",
       lang,
       max: String(max),
       token: apiKey
     });
     const fallbackCountryParams = new URLSearchParams({
-      topic: "business",
+      category: "business",
       country,
       max: String(max),
       token: apiKey
@@ -128,17 +135,7 @@ router.get("/finance", requireAuth, async (req, res) => {
 
     const attempts = [
       { label: "search(query)", url: `https://gnews.io/api/v4/search?${searchParams.toString()}` },
-      {
-        label: "search(sanitized)",
-        url:
-          `https://gnews.io/api/v4/search?${new URLSearchParams({
-            q: sanitizedQuery || "finance economy market borsa crypto",
-            lang,
-            max: String(max),
-            sortby: "publishedAt",
-            token: apiKey
-          }).toString()}`
-      },
+      { label: "search(fallback)", url: `https://gnews.io/api/v4/search?${fallbackSearch.toString()}` },
       { label: "top-headlines(lang)", url: `https://gnews.io/api/v4/top-headlines?${fallbackHeadlineParams.toString()}` },
       { label: "top-headlines(country)", url: `https://gnews.io/api/v4/top-headlines?${fallbackCountryParams.toString()}` }
     ];

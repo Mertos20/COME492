@@ -20,6 +20,7 @@ import ProfilePage from "./pages/ProfilePage";
 import AdminPage from "./pages/AdminPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import WatchlistPage from "./pages/WatchlistPage";
+import NotFoundPage from "./pages/NotFoundPage";
 
 const plans = ["free", "bronze", "silver", "gold"] as const;
 
@@ -180,64 +181,79 @@ function App() {
 
   return (
     <Router>
-      {!token ? (
-        <LoginRegisterPage onAuthSuccess={handleAuthSuccess} />
-      ) : (
-        <Layout user={user} balance={balance} onLogout={handleLogout}>
-          <Routes>
-            <Route path="/" element={user?.isAdmin ? <Navigate to="/admin" /> : <DashboardPage />} />
-            <Route path="/markets" element={user?.isAdmin ? <Navigate to="/admin" /> : <MarketsPage />} />
-            <Route path="/news" element={user?.isAdmin ? <Navigate to="/admin" /> : <NewsPage />} />
-            <Route path="/subscriptions" element={user?.isAdmin ? <Navigate to="/admin" /> : <SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} onBalanceChange={setBalance} />} />
-            <Route
-              path="/deposit"
-              element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/trading"
-              element={user?.role === "user" && !user.isAdmin ? <TradingPage balance={balance} onTradeComplete={handleTradeComplete} /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/portfolio"
-              element={user?.role === "user" && !user.isAdmin ? <PortfolioPage /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/watchlist"
-              element={user?.role === "user" && !user.isAdmin ? <WatchlistPage /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/transactions"
-              element={user?.role === "user" && !user.isAdmin ? <TransactionHistoryPage /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/admin"
-              element={user?.isAdmin ? <AdminPage /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/chat"
-              element={user?.role === "user" && !user.isAdmin ? <ChatPage user={user} token={token} /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/analysis"
-              element={user?.role === "user" && !user.isAdmin ? <AnalysisPage /> : <Navigate to="/" />}
-            />
-            <Route
-              path="/expert"
-              element={user?.role === "expert" ? <ExpertPanelPage user={user} token={token} /> : <Navigate to="/" />}
-            />
-            <Route path="/load-balance" element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />} />
-            <Route
-              path="/profile"
-              element={user?.isAdmin ? <Navigate to="/admin" /> : <ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
-            />
-            <Route path="*" element={<Navigate to="/" />} />
-          </Routes>
-        </Layout>
-      )}
+      <Routes>
+        <Route path="/404" element={<NotFoundPage />} />
+        {!token ? (
+          <>
+            <Route path="/" element={<LoginRegisterPage onAuthSuccess={handleAuthSuccess} />} />
+            {/* Giriş yapılmadığında bilinen sayfalara erişilirse Ana Sayfaya (Login) yönlendir */}
+            {[
+              "/markets", "/news", "/subscriptions", "/deposit", "/trading",
+              "/portfolio", "/watchlist", "/transactions", "/admin", "/chat",
+              "/analysis", "/expert", "/load-balance", "/profile"
+            ].map((p) => (
+              <Route key={p} path={p} element={<Navigate to="/" replace />} />
+            ))}
+            {/* Bilinmeyen tüm URL'lerde 404'ü göster */}
+            <Route path="*" element={<Navigate to="/404" replace />} />
+          </>
+        ) : (
+          <Route path="/*" element={
+            <Layout user={user} balance={balance} onLogout={handleLogout}>
+              <Routes>
+                <Route path="/" element={user?.isAdmin ? <Navigate to="/admin" /> : <DashboardPage />} />
+                <Route path="/markets" element={user?.isAdmin ? <Navigate to="/admin" /> : <MarketsPage />} />
+                <Route path="/news" element={user?.isAdmin ? <Navigate to="/admin" /> : <NewsPage />} />
+                <Route path="/subscriptions" element={user?.isAdmin ? <Navigate to="/admin" /> : <SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} onBalanceChange={setBalance} />} />
+                <Route
+                  path="/deposit"
+                  element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/trading"
+                  element={user?.role === "user" && !user.isAdmin ? <TradingPage balance={balance} onTradeComplete={handleTradeComplete} /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/portfolio"
+                  element={user?.role === "user" && !user.isAdmin ? <PortfolioPage /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/watchlist"
+                  element={user?.role === "user" && !user.isAdmin ? <WatchlistPage /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/transactions"
+                  element={user?.role === "user" && !user.isAdmin ? <TransactionHistoryPage /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/admin"
+                  element={user?.isAdmin ? <AdminPage /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/chat"
+                  element={user?.role === "user" && !user.isAdmin ? <ChatPage user={user} token={token} /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/analysis"
+                  element={user?.role === "user" && !user.isAdmin ? <AnalysisPage /> : <Navigate to="/" />}
+                />
+                <Route
+                  path="/expert"
+                  element={user?.role === "expert" ? <ExpertPanelPage user={user} token={token} /> : <Navigate to="/" />}
+                />
+                <Route path="/load-balance" element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />} />
+                <Route
+                  path="/profile"
+                  element={user?.isAdmin ? <Navigate to="/admin" /> : <ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
+                />
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </Layout>
+          } />
+        )}
+      </Routes>
     </Router>
   );
 }
 
 export default App;
-
-
