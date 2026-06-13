@@ -10,10 +10,8 @@ const formatDate = (value: string): string =>
   new Date(value).toLocaleString("tr-TR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default function NewsPage() {
-  const [scope, setScope] = useState<"tr" | "global">("tr");
   const [news, setNews] = useState<NewsItem[]>([]);
   const [query, setQuery] = useState("ekonomi OR finans OR borsa OR kripto OR yatırım");
-  const [searchInput, setSearchInput] = useState(query);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -23,7 +21,7 @@ export default function NewsPage() {
     const loadNews = async () => {
       setLoading(true); setError(null); setWarning(null);
       try {
-        const params = new URLSearchParams({ q: query, scope, limit: "10" });
+        const params = new URLSearchParams({ q: query, scope: "global", limit: "10" });
         const res = await api.get<NewsResponse>(`/news/finance?${params.toString()}`);
         setNews(res.data.items);
         if (res.data.warning) {
@@ -34,7 +32,7 @@ export default function NewsPage() {
       finally { setLoading(false); }
     };
     loadNews();
-  }, [query, scope]);
+  }, [query]);
 
   const hasNews = useMemo(() => news.length > 0, [news]);
 
@@ -69,24 +67,6 @@ export default function NewsPage() {
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2.5 }}>
           Borsa, kripto, emtia ve makro ekonomi başlıklarında güncel haber akışını takip edin.
         </Typography>
-
-        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
-          {[{ v: "tr" as const, l: "🇹🇷 Türkçe", dq: "ekonomi OR finans OR borsa OR kripto OR yatırım" },
-            { v: "global" as const, l: "🌍 Yabancı", dq: "finance OR economy OR market OR stocks OR crypto" }
-          ].map(s => (
-            <Chip key={s.v} label={s.l} clickable
-              onClick={() => { setScope(s.v); setQuery(s.dq); setSearchInput(s.dq); }}
-              sx={{
-                fontWeight: 600,
-                background: scope === s.v ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.03)',
-                color: scope === s.v ? '#00d4ff' : 'text.secondary',
-                border: `1px solid ${scope === s.v ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                '&:hover': { background: 'rgba(0,212,255,0.08)' },
-              }} />
-          ))}
-        </Stack>
-
-       
       </Box>
 
       {warning && !loading && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
