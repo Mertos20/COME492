@@ -60,6 +60,20 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
     setTimeout(() => navigate('/portfolio'), 1500);
   };
 
+  const handleIbanChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    let raw = e.target.value.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+    if (!raw.startsWith('TR')) {
+      raw = 'TR' + raw.replace(/^TR/i, '');
+    }
+    let rest = raw.substring(2).replace(/[^0-9]/g, '');
+    if (rest.length > 24) {
+      rest = rest.substring(0, 24);
+    }
+    const combined = 'TR' + rest;
+    const groups = combined.match(/.{1,4}/g);
+    setIban(groups ? groups.join(' ') : 'TR');
+  };
+
   const handleWithdraw = async (e: React.FormEvent) => {
     e.preventDefault();
     const val = parseFloat(withdrawAmount);
@@ -72,8 +86,9 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
       enqueueSnackbar('Çekilebilir bakiyeniz yetersiz.', { variant: 'error' });
       return;
     }
-    if (iban.length < 24) {
-      enqueueSnackbar('Lütfen geçerli bir IBAN girin.', { variant: 'error' });
+    const rawIban = iban.replace(/\s/g, '');
+    if (rawIban.length !== 26) {
+      enqueueSnackbar('Lütfen 26 karakterlik geçerli bir IBAN girin.', { variant: 'error' });
       return;
     }
     if (accountName.trim().length < 3) {
@@ -266,7 +281,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                 <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>IBAN</Typography>
                 <TextField 
                   fullWidth value={iban} 
-                  onChange={(e) => setIban(e.target.value)} 
+                  onChange={handleIbanChange} 
                   placeholder="TR00 0000 0000 0000 0000 0000 00"
                   slotProps={{
                     input: {
