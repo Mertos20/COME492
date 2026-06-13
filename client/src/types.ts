@@ -3,6 +3,7 @@ export type MembershipTier = "free" | "bronze" | "silver" | "gold";
 export interface AuthUser {
   id: string;
   fullName: string;
+  email: string;
   role: "user" | "expert";
   membership: MembershipTier;
 }

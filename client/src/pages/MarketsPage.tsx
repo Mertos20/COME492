@@ -2,42 +2,31 @@ import { useEffect, useState } from "react";
 import type { MarketInstrument } from "../types";
 import { api } from "../api";
 import { io } from "socket.io-client";
-import { Grid, Card, CardContent, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Switch } from "@mui/material";
-import { SparkLineChart } from '@mui/x-charts/SparkLineChart';
+import { Grid, Card, CardContent, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Chip } from "@mui/material";
+import { TrendingUp, TrendingDown, BarChart } from "@mui/icons-material";
 import ChartModal from "../components/ChartModal";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value);
 
-interface MarketsPageProps {
-  markets: MarketInstrument[];
-  popular: MarketInstrument[];
-}
+import { useMarket } from "../contexts/MarketContext";
 
-export default function MarketsPage({ markets: initialMarkets, popular: initialPopular }: MarketsPageProps) {
-  const [popular, setPopular] = useState(initialPopular);
-  const [markets, setMarkets] = useState(initialMarkets);
-  const [showChart, setShowChart] = useState<Record<string, boolean>>({});
+const categoryColors: Record<string, string> = {
+  crypto: '#f59e0b',
+  forex: '#3b82f6',
+  gold: '#ffd700',
+  silver: '#c0c0c0',
+};
+
+export default function MarketsPage() {
+  const { instruments: markets, loading } = useMarket();
+  const popular = markets.filter((item) => item.popular);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChart, setSelectedChart] = useState<MarketInstrument | null>(null);
 
-  useEffect(() => {
-    const socketUrl = import.meta.env.VITE_SOCKET_URL || "http://localhost:5000";
-    const instance = io(`${socketUrl}/market`);
-
-    instance.on("market:update", (data: MarketInstrument[]) => {
-      setMarkets(data);
-      setPopular(data.filter((item) => item.popular));
-    });
-
-    return () => {
-      instance.disconnect();
-    };
-  }, []);
-
-  const handleChartToggle = (symbol: string) => {
-    setShowChart(prev => ({ ...prev, [symbol]: !prev[symbol] }));
-  };
+  if (loading) {
+    return <Box sx={{ p: 4, textAlign: 'center' }}><Typography>Yükleniyor...</Typography></Box>;
+  }
 
   const handleOpenChart = (item: MarketInstrument) => {
     setSelectedChart(item);
@@ -46,36 +35,100 @@ export default function MarketsPage({ markets: initialMarkets, popular: initialP
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>Popüler Yatırım Ürünleri</Typography>
-      <Grid container spacing={3} sx={{ mb: 5 }}>
-        {popular.map((item) => (
+      {/* Section Header */}
+      <Box sx={{ mb: 3 }}>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Popüler Yatırım Ürünleri</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>En çok işlem gören yatırım araçları</Typography>
+      </Box>
+
+      {/* Popular Cards */}
+      <Grid container spacing={2} sx={{ mb: 5 }}>
+        {popular.map((item, index) => (
           <Grid xs={12} sm={6} md={4} lg={3} key={item.symbol}>
-            <Card elevation={3}>
-              <CardContent>
-                <Typography variant="h6" component="div">{item.name}</Typography>
-                <Typography color="text.secondary">{item.symbol}</Typography>
-                <Typography variant="h5" sx={{ my: 1 }}>{formatMoney(item.price)}</Typography>
-                <Typography color={item.change30d >= 0 ? "success.main" : "error.main"}>
-                  {item.change30d.toFixed(2)}% (30g)
+            <Card
+              elevation={0}
+              sx={{
+                background: 'rgba(255,255,255,0.03)',
+                border: '1px solid rgba(255,255,255,0.08)',
+                animation: 'slideUp 0.5s ease-out forwards',
+                animationDelay: `${index * 0.08}s`,
+                opacity: 0,
+                '&:hover': {
+                  borderColor: item.change30d >= 0 ? 'rgba(16, 185, 129, 0.4)' : 'rgba(239, 68, 68, 0.4)',
+                  boxShadow: item.change30d >= 0
+                    ? '0 0 30px rgba(16, 185, 129, 0.1)'
+                    : '0 0 30px rgba(239, 68, 68, 0.1)',
+                },
+              }}
+            >
+              <CardContent sx={{ p: 2.5 }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                  <Box>
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>{item.name}</Typography>
+                  </Box>
+                  <Chip
+                    label={item.category}
+                    size="small"
+                    sx={{
+                      fontSize: '0.6rem',
+                      height: 20,
+                      background: `${categoryColors[item.category]}15`,
+                      color: categoryColors[item.category],
+                      border: `1px solid ${categoryColors[item.category]}30`,
+                    }}
+                  />
+                </Box>
+                <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
+                  {formatMoney(item.price)}
                 </Typography>
-                <Button 
-                  size="small" 
-                  variant="contained" 
-                  color="primary"
-                  onClick={() => handleOpenChart(item)}
-                  fullWidth
-                  sx={{ mt: 1 }}
-                >
-                  Grafiği Göster
-                </Button>
+                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: item.change30d >= 0 ? 'success.main' : 'error.main' }}>
+                    {item.change30d >= 0 ? <TrendingUp sx={{ fontSize: 18 }} /> : <TrendingDown sx={{ fontSize: 18 }} />}
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {item.change30d.toFixed(2)}%
+                    </Typography>
+                  </Box>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => handleOpenChart(item)}
+                    startIcon={<BarChart sx={{ fontSize: '1rem !important' }} />}
+                    sx={{
+                      fontSize: '0.7rem',
+                      py: 0.3,
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      color: 'text.secondary',
+                      '&:hover': {
+                        borderColor: '#00d4ff',
+                        color: '#00d4ff',
+                        background: 'rgba(0, 212, 255, 0.05)',
+                      },
+                    }}
+                  >
+                    Grafik
+                  </Button>
+                </Box>
               </CardContent>
             </Card>
           </Grid>
         ))}
       </Grid>
 
-      <Typography variant="h4" gutterBottom>Yatırım Ürünleri - Hepsi</Typography>
-      <TableContainer component={Paper}>
+      {/* All Markets Table */}
+      <Box sx={{ mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Tüm Yatırım Ürünleri</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Piyasa fiyatları gerçek zamanlı güncellenmektedir</Typography>
+      </Box>
+
+      <TableContainer
+        component={Paper}
+        elevation={0}
+        sx={{
+          background: 'rgba(255,255,255,0.02)',
+          border: '1px solid rgba(255,255,255,0.06)',
+        }}
+      >
         <Table aria-label="Tüm yatırım ürünleri">
           <TableHead>
             <TableRow>
@@ -90,20 +143,48 @@ export default function MarketsPage({ markets: initialMarkets, popular: initialP
             {markets.map((item) => (
               <TableRow key={item.symbol}>
                 <TableCell component="th" scope="row">
-                  <Typography variant="subtitle2">{item.symbol}</Typography>
-                  <Typography variant="body2" color="text.secondary">{item.name}</Typography>
+                  <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
+                  <Typography variant="caption" sx={{ color: 'text.secondary' }}>{item.name}</Typography>
                 </TableCell>
-                <TableCell>{item.category}</TableCell>
-                <TableCell align="right">{formatMoney(item.price)}</TableCell>
-                <TableCell align="right" sx={{ color: item.change30d >= 0 ? 'success.main' : 'error.main' }}>
-                  {item.change30d.toFixed(2)}%
+                <TableCell>
+                  <Chip
+                    label={item.category}
+                    size="small"
+                    sx={{
+                      fontSize: '0.65rem',
+                      height: 22,
+                      background: `${categoryColors[item.category]}15`,
+                      color: categoryColors[item.category],
+                      border: `1px solid ${categoryColors[item.category]}30`,
+                    }}
+                  />
+                </TableCell>
+                <TableCell align="right">
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatMoney(item.price)}</Typography>
+                </TableCell>
+                <TableCell align="right">
+                  <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, color: item.change30d >= 0 ? 'success.main' : 'error.main' }}>
+                    {item.change30d >= 0 ? <TrendingUp sx={{ fontSize: 16 }} /> : <TrendingDown sx={{ fontSize: 16 }} />}
+                    <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                      {item.change30d.toFixed(2)}%
+                    </Typography>
+                  </Box>
                 </TableCell>
                 <TableCell align="center">
                   <Button
                     size="small"
                     variant="outlined"
-                    color="primary"
                     onClick={() => handleOpenChart(item)}
+                    sx={{
+                      fontSize: '0.7rem',
+                      py: 0.3,
+                      borderColor: 'rgba(255,255,255,0.1)',
+                      color: 'text.secondary',
+                      '&:hover': {
+                        borderColor: '#00d4ff',
+                        color: '#00d4ff',
+                      },
+                    }}
                   >
                     Grafiği Aç
                   </Button>

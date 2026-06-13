@@ -1,7 +1,17 @@
 import { useState, useEffect } from "react";
 import { api } from "../api";
-import type { MarketInstrument } from "../types";
-import { Grid, Paper, Typography, TextField, Button, CircularProgress, Select, MenuItem, FormControl, InputLabel, Alert, ToggleButtonGroup, ToggleButton, Box } from "@mui/material";
+import { useMarket } from "../contexts/MarketContext";
+import { 
+  Grid, Paper, Typography, TextField, Button, CircularProgress, 
+  Select, MenuItem, FormControl, InputLabel, Alert, ToggleButtonGroup, 
+  ToggleButton, Box, Table, TableBody, TableCell, TableContainer, 
+  TableHead, TableRow, IconButton
+} from "@mui/material";
+import { 
+  AccountBalanceWallet, SwapHoriz, TrendingUp, TrendingDown, Cancel 
+} from "@mui/icons-material";
+import LoadingSkeleton from "../components/LoadingSkeleton";
+import CheckoutModal from "../components/CheckoutModal";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -11,28 +21,53 @@ interface TradingPageProps {
   onTradeComplete: () => void;
 }
 
-export default function TradingPage({ onTradeComplete }: TradingPageProps) {
-  const [markets, setMarkets] = useState<MarketInstrument[]>([]);
+interface PendingOrder {
+  _id: string;
+  symbol: string;
+  type: "market" | "limit" | "stop";
+  side: "buy" | "sell";
+  quantity: number;
+  targetPrice: number;
+  status: string;
+  createdAt: string;
+}
+
+export default function TradingPage({ balance, onTradeComplete }: TradingPageProps) {
+  const { instruments: markets, loading: pageLoading } = useMarket();
   const [depositAmount, setDepositAmount] = useState("10000");
-  const [order, setOrder] = useState({ side: "buy", symbol: "", quantity: "0.05" });
+  const [order, setOrder] = useState({ 
+    side: "buy", 
+    symbol: "", 
+    quantity: "0.05",
+    type: "market",
+    targetPrice: ""
+  });
+  const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const loadMarkets = async () => {
-      try {
-        const res = await api.get<MarketInstrument[]>("/markets/all");
-        setMarkets(res.data);
-        if (res.data.length > 0) {
-          setOrder((prev) => ({ ...prev, symbol: res.data[0].symbol }));
-        }
-      } catch {
-        setError("Piyasalar yüklenemedi.");
-      }
-    };
+    if (markets.length > 0 && !order.symbol) {
+      setOrder((prev) => ({ ...prev, symbol: markets[0].symbol }));
+    }
+  }, [markets, order.symbol]);
 
-    loadMarkets();
+  const loadOrders = async () => {
+    try {
+      const res = await api.get<PendingOrder[]>("/trade/orders");
+      setPendingOrders(res.data);
+    } catch (err) {
+      console.error("Bekleyen emirler yüklenemedi", err);
+    }
+  };
+
+  useEffect(() => {
+    loadOrders();
+    // Refresh pending orders periodically
+    const interval = setInterval(loadOrders, 10000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleDeposit = async () => {
@@ -41,12 +76,17 @@ export default function TradingPage({ onTradeComplete }: TradingPageProps) {
       setError("Geçerli bir tutar girin.");
       return;
     }
+    setCheckoutOpen(true);
+  };
 
+  const handlePaymentSuccess = async () => {
+    setCheckoutOpen(false);
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
+      const amount = Number(depositAmount);
       await api.post("/wallet/deposit", { amount });
       setSuccess(`${formatMoney(amount)} başarıyla yüklendi!`);
       setDepositAmount("10000");
@@ -66,19 +106,27 @@ export default function TradingPage({ onTradeComplete }: TradingPageProps) {
       return;
     }
 
+    const targetPrice = Number(order.targetPrice);
+    if (order.type !== "market" && (!targetPrice || targetPrice <= 0)) {
+      setError("Geçerli bir hedef fiyat girin.");
+      return;
+    }
+
     setLoading(true);
     setError("");
     setSuccess("");
 
     try {
-      await api.post("/trade/order", {
+      const res = await api.post("/trade/order", {
         side: order.side,
         symbol: order.symbol,
-        quantity
+        quantity,
+        type: order.type,
+        targetPrice: order.type === "market" ? undefined : targetPrice
       });
-      setSuccess(`${order.side.toUpperCase()} işlemi başarılı!`);
-      setOrder((prev) => ({ ...prev, quantity: "0.05" }));
+      setSuccess(res.data.message || "İşlem başarılı!");
       onTradeComplete();
+      loadOrders(); // Refresh orders if it was a limit/stop order
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
       setError(err.response?.data?.message || "İşlem başarısız.");
@@ -87,85 +135,285 @@ export default function TradingPage({ onTradeComplete }: TradingPageProps) {
     }
   };
 
+  const cancelOrder = async (id: string) => {
+    try {
+      await api.delete(`/trade/orders/${id}`);
+      setSuccess("Emir başarıyla iptal edildi.");
+      onTradeComplete(); // Refund updates balance
+      loadOrders();
+    } catch (err: any) {
+      setError(err.response?.data?.message || "Emir iptal edilemedi.");
+    }
+  };
+
+  if (pageLoading) {
+    return <LoadingSkeleton type="dashboard" />;
+  }
+
+  const selectedMarket = markets.find(m => m.symbol === order.symbol);
+  const currentPrice = selectedMarket ? selectedMarket.price : 0;
+  const isBuy = order.side === "buy";
+  const estimatedTotal = order.type === "market" 
+    ? currentPrice * Number(order.quantity) 
+    : Number(order.targetPrice) * Number(order.quantity);
+
   return (
-    <Grid container spacing={4}>
-      <Grid xs={12} md={6}>
-        <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-          <Typography variant="h5" gutterBottom>Hesaba Bakiye Yükle</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Bakiyenize para ekleyerek hemen ticarete başlayın.
+    <Grid container spacing={3}>
+      <Grid item xs={12} md={8}>
+        <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
+            <SwapHoriz color="primary" /> Hızlı Al/Sat
           </Typography>
-          <TextField
-            fullWidth
-            type="number"
-            label="Tutar (TRY)"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
-            placeholder="10000"
-            step="100"
-            sx={{ mb: 2 }}
-          />
-          <Button fullWidth variant="contained" onClick={handleDeposit} disabled={loading} sx={{ py: 1.5 }}>
-            {loading ? <CircularProgress size={24} /> : "Yükle"}
-          </Button>
-          {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
-          {success && <Alert severity="success" sx={{ mt: 2 }}>{success}</Alert>}
+
+          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
+            <ToggleButtonGroup
+              value={order.side}
+              exclusive
+              onChange={(e, value) => value && setOrder({ ...order, side: value })}
+              sx={{ width: '100%', maxWidth: 400 }}
+            >
+              <ToggleButton 
+                value="buy" 
+                sx={{ 
+                  flex: 1, 
+                  color: isBuy ? '#fff !important' : 'text.secondary',
+                  background: isBuy ? 'rgba(16, 185, 129, 0.2) !important' : 'transparent',
+                  borderColor: isBuy ? '#10b981 !important' : 'rgba(255, 255, 255, 0.1)',
+                  fontWeight: isBuy ? 700 : 500,
+                  '&:hover': { background: 'rgba(16, 185, 129, 0.1)' }
+                }}
+              >
+                AL (BUY)
+              </ToggleButton>
+              <ToggleButton 
+                value="sell" 
+                sx={{ 
+                  flex: 1,
+                  color: !isBuy ? '#fff !important' : 'text.secondary',
+                  background: !isBuy ? 'rgba(239, 68, 68, 0.2) !important' : 'transparent',
+                  borderColor: !isBuy ? '#ef4444 !important' : 'rgba(255, 255, 255, 0.1)',
+                  fontWeight: !isBuy ? 700 : 500,
+                  '&:hover': { background: 'rgba(239, 68, 68, 0.1)' }
+                }}
+              >
+                SAT (SELL)
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+
+          <Grid container spacing={3}>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth variant="outlined">
+                <InputLabel>Ürün</InputLabel>
+                <Select
+                  value={order.symbol}
+                  onChange={(e) => setOrder({ ...order, symbol: e.target.value })}
+                  label="Ürün"
+                >
+                  {markets.map((m) => (
+                    <MenuItem key={m.symbol} value={m.symbol}>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                        <span>{m.symbol} - {m.name}</span>
+                        <span style={{ opacity: 0.7 }}>{formatMoney(m.price)}</span>
+                      </Box>
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth variant="outlined">
+                <InputLabel>Emir Tipi</InputLabel>
+                <Select
+                  value={order.type}
+                  onChange={(e) => setOrder({ ...order, type: e.target.value as any })}
+                  label="Emir Tipi"
+                >
+                  <MenuItem value="market">Piyasa (Market)</MenuItem>
+                  <MenuItem value="limit">Limit (Hedef Fiyat)</MenuItem>
+                  <MenuItem value="stop">Stop-Loss (Zarar Kes)</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+
+            <Grid item xs={12} sm={order.type !== "market" ? 6 : 12}>
+              <TextField
+                fullWidth
+                label="Miktar"
+                type="number"
+                value={order.quantity}
+                onChange={(e) => setOrder({ ...order, quantity: e.target.value })}
+                slotProps={{
+                  input: { inputProps: { min: 0, step: 0.01 } }
+                }}
+              />
+            </Grid>
+
+            {order.type !== "market" && (
+              <Grid item xs={12} sm={6}>
+                <TextField
+                  fullWidth
+                  label="Hedef Fiyat (TRY)"
+                  type="number"
+                  value={order.targetPrice}
+                  onChange={(e) => setOrder({ ...order, targetPrice: e.target.value })}
+                  slotProps={{
+                    input: { inputProps: { min: 0, step: 0.01 } }
+                  }}
+                />
+              </Grid>
+            )}
+          </Grid>
+
+          <Box sx={{ mt: 4, p: 3, borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
+            <Grid container alignItems="center" justifyContent="space-between">
+              <Grid item>
+                <Typography variant="body2" color="text.secondary">Güncel Fiyat</Typography>
+                <Typography variant="h6">{formatMoney(currentPrice)}</Typography>
+              </Grid>
+              <Grid item sx={{ textAlign: 'right' }}>
+                <Typography variant="body2" color="text.secondary">
+                  {order.type === "market" ? "Tahmini Toplam Tutar" : "Rezerve Edilecek Tutar"}
+                </Typography>
+                <Typography variant="h5" sx={{ color: isBuy ? '#10b981' : '#ef4444', fontWeight: 800 }}>
+                  {!isNaN(estimatedTotal) && estimatedTotal > 0 ? formatMoney(estimatedTotal) : "0,00 ₺"}
+                </Typography>
+              </Grid>
+            </Grid>
+          </Box>
+
+          <Box sx={{ mt: 3, display: "flex", gap: 2 }}>
+            <Button
+              variant="contained"
+              fullWidth
+              size="large"
+              onClick={handleTrade}
+              disabled={loading}
+              sx={{ 
+                height: 56, 
+                fontSize: '1.1rem',
+                fontWeight: 700,
+                background: isBuy 
+                  ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' 
+                  : 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
+                '&:hover': {
+                  background: isBuy 
+                    ? 'linear-gradient(135deg, #059669 0%, #047857 100%)' 
+                    : 'linear-gradient(135deg, #dc2626 0%, #b91c1c 100%)',
+                }
+              }}
+            >
+              {loading ? <CircularProgress size={24} color="inherit" /> : (isBuy ? "Satın Al" : "Sat")}
+            </Button>
+          </Box>
+
+          {error && <Alert severity="error" sx={{ mt: 3 }}>{error}</Alert>}
+          {success && <Alert severity="success" sx={{ mt: 3 }}>{success}</Alert>}
+        </Paper>
+
+        {/* Active Orders Section */}
+        <Paper sx={{ mt: 4, p: 3, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Bekleyen Emirler</Typography>
+          {pendingOrders.length === 0 ? (
+            <Typography variant="body2" color="text.secondary">Bekleyen açık emriniz bulunmuyor.</Typography>
+          ) : (
+            <TableContainer>
+              <Table size="small">
+                <TableHead>
+                  <TableRow>
+                    <TableCell>Tarih</TableCell>
+                    <TableCell>Ürün</TableCell>
+                    <TableCell>İşlem</TableCell>
+                    <TableCell>Tip</TableCell>
+                    <TableCell align="right">Hedef Fiyat</TableCell>
+                    <TableCell align="right">Miktar</TableCell>
+                    <TableCell align="center">İptal</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {pendingOrders.map((po) => (
+                    <TableRow key={po._id}>
+                      <TableCell>{new Date(po.createdAt).toLocaleString('tr-TR', { day:'2-digit', month:'short', hour:'2-digit', minute:'2-digit' })}</TableCell>
+                      <TableCell sx={{ fontWeight: 600 }}>{po.symbol}</TableCell>
+                      <TableCell>
+                        <Typography variant="body2" sx={{ color: po.side === "buy" ? "success.main" : "error.main", fontWeight: 700 }}>
+                          {po.side === "buy" ? "AL" : "SAT"}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>{po.type.toUpperCase()}</TableCell>
+                      <TableCell align="right">{formatMoney(po.targetPrice)}</TableCell>
+                      <TableCell align="right">{po.quantity}</TableCell>
+                      <TableCell align="center">
+                        <IconButton size="small" color="error" onClick={() => cancelOrder(po._id)}>
+                          <Cancel fontSize="small" />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
         </Paper>
       </Grid>
 
-      <Grid xs={12} md={6}>
-        <Paper elevation={3} sx={{ p: 3, height: '100%' }}>
-          <Typography variant="h5" gutterBottom>Al / Sat İşlemi</Typography>
-          <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-            Yatırım ürünleri ticareti yapın.
-          </Typography>
-          <Box sx={{ display: 'flex', justifyContent: 'center', mb: 2 }}>
-            <ToggleButtonGroup
-              color={order.side === 'buy' ? 'success' : 'error'}
-              value={order.side}
-              exclusive
-              onChange={(e, newSide) => { if(newSide) setOrder(p => ({ ...p, side: newSide }))}}
-            >
-              <ToggleButton value="buy">AL</ToggleButton>
-              <ToggleButton value="sell">SAT</ToggleButton>
-            </ToggleButtonGroup>
+      <Grid item xs={12} md={4}>
+        <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)', textAlign: 'center' }}>
+          <Box sx={{ 
+            width: 64, height: 64, borderRadius: '50%', background: 'rgba(0, 212, 255, 0.1)', 
+            display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px',
+            border: '1px solid rgba(0, 212, 255, 0.3)'
+          }}>
+            <AccountBalanceWallet sx={{ fontSize: 32, color: '#00d4ff' }} />
           </Box>
-          <FormControl fullWidth sx={{ mb: 2 }}>
-            <InputLabel>Ürün</InputLabel>
-            <Select
-              value={order.symbol}
-              label="Ürün"
-              onChange={(e) => setOrder((p) => ({ ...p, symbol: e.target.value }))}
-            >
-              {markets.map((item) => (
-                <MenuItem key={item.symbol} value={item.symbol}>
-                  {item.symbol} - {item.name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
+          <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            Kullanılabilir Bakiye
+          </Typography>
+          <Typography variant="h3" sx={{ mt: 1, mb: 4, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
+            {formatMoney(balance)}
+          </Typography>
+
+          <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', textAlign: 'left' }}>
+            Bakiye Yükle
+          </Typography>
           <TextField
             fullWidth
             type="number"
-            label="Miktar"
-            value={order.quantity}
-            onChange={(e) => setOrder((p) => ({ ...p, quantity: e.target.value }))}
-            placeholder="0.05"
-            step="0.01"
+            value={depositAmount}
+            onChange={(e) => setDepositAmount(e.target.value)}
+            slotProps={{
+              input: { inputProps: { min: 0 } }
+            }}
             sx={{ mb: 2 }}
           />
-          <Button 
-            fullWidth 
-            variant="contained" 
-            color={order.side === 'buy' ? 'success' : 'error'} 
-            onClick={handleTrade} 
-            disabled={loading} 
-            sx={{ py: 1.5 }}
+          <Button
+            variant="outlined"
+            fullWidth
+            onClick={handleDeposit}
+            disabled={loading}
+            sx={{ 
+              height: 48,
+              borderColor: 'rgba(0, 212, 255, 0.5)',
+              color: '#00d4ff',
+              '&:hover': {
+                borderColor: '#00d4ff',
+                background: 'rgba(0, 212, 255, 0.05)'
+              }
+            }}
           >
-            {loading ? <CircularProgress size={24} /> : `${order.side.toUpperCase()} Onayla`}
+            {loading ? <CircularProgress size={24} color="inherit" /> : "Bakiye Ekle"}
           </Button>
         </Paper>
       </Grid>
+      
+      {/* Checkout Modal for Balance Loading */}
+      <CheckoutModal 
+        open={checkoutOpen}
+        onClose={() => setCheckoutOpen(false)}
+        tier="Bakiye Yükleme"
+        price={Number(depositAmount) || 0}
+        onSuccess={handlePaymentSuccess}
+      />
     </Grid>
   );
 }

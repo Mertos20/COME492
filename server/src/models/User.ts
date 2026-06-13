@@ -17,7 +17,11 @@ export interface IUser extends Document {
   role: UserRole;
   expertTier?: Exclude<MembershipTier, "free">;
   balance: number;
+  lockedBalance: number;
   holdings: IHolding[];
+  lockedHoldings: IHolding[];
+  resetPasswordCode?: string;
+  resetPasswordExpires?: Date;
 }
 
 const HoldingSchema = new Schema<IHolding>(
@@ -39,16 +43,27 @@ const UserSchema = new Schema<IUser>(
       enum: ["free", "bronze", "silver", "gold"],
       default: "free"
     },
-    role: { type: String, enum: ["user", "expert", "free"], default: "user" },
+    role: { type: String, enum: ["user", "expert"], default: "user" },
     expertTier: { type: String, enum: ["bronze", "silver", "gold"], required: false },
     balance: { type: Number, default: 0 },
-      holdings: { type: [{
-    symbol: String,
-    quantity: Number,
-    avgBuyPrice: Number
-  }], default: [] },
+    lockedBalance: { type: Number, default: 0 },
+    holdings: { type: [HoldingSchema], default: [] },
+    lockedHoldings: { type: [HoldingSchema], default: [] },
+    resetPasswordCode: { type: String },
+    resetPasswordExpires: { type: Date },
   },
   { timestamps: true }
 );
+
+UserSchema.pre("validate", function () {
+  if (this.role !== "user" && this.role !== "expert") {
+    if (["free", "bronze", "silver", "gold"].includes(this.role as any)) {
+      if (this.membership === "free") {
+        this.membership = this.role as any;
+      }
+    }
+    this.role = "user";
+  }
+});
 
 export default mongoose.models.User || mongoose.model<IUser>("User", UserSchema);

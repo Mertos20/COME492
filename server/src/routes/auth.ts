@@ -4,9 +4,10 @@ import jwt from "jsonwebtoken";
 import User, { MembershipTier } from "../models/User";
 import Transaction from "../models/Transaction";
 import { AuthRequest, requireAuth } from "../middleware/auth";
+import { sendEmailCode } from "../utils/mailer";
 
 const router = Router();
-const secret = process.env.JWT_SECRET || "dev_secret";
+const getSecret = (): string => process.env.JWT_SECRET || "dev_secret";
 
 const MEMBERSHIP_PRICES: Record<MembershipTier, number> = {
   free: 0,
@@ -15,18 +16,42 @@ const MEMBERSHIP_PRICES: Record<MembershipTier, number> = {
   gold: 20
 };
 
+const MEMBERSHIP_LEVELS: Record<MembershipTier, number> = {
+  free: 0,
+  bronze: 1,
+  silver: 2,
+  gold: 3
+};
+
 const signToken = (user: {
   id: string;
   membership: MembershipTier;
   role: "user" | "expert";
   fullName: string;
-}): string => jwt.sign(user, secret, { expiresIn: "7d" });
+}): string => jwt.sign(user, getSecret(), { expiresIn: "7d" });
 
 router.post("/register", async (req, res) => {
   const { fullName, email, password } = req.body;
 
   if (!fullName || !email || !password) {
     res.status(400).json({ message: "Tum alanlar zorunlu" });
+    return;
+  }
+
+  // Input validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(email)) {
+    res.status(400).json({ message: "Gecerli bir e-posta adresi giriniz" });
+    return;
+  }
+
+  if (String(password).length < 6) {
+    res.status(400).json({ message: "Sifre en az 6 karakter olmalidir" });
+    return;
+  }
+
+  if (String(fullName).trim().length < 2) {
+    res.status(400).json({ message: "Ad soyad en az 2 karakter olmalidir" });
     return;
   }
 
@@ -51,6 +76,11 @@ router.post("/register", async (req, res) => {
 
 router.post("/login", async (req, res) => {
   const { email, password } = req.body;
+
+  if (!email || !password) {
+    res.status(400).json({ message: "E-posta ve sifre zorunludur" });
+    return;
+  }
 
   const user = await User.findOne({ email });
   if (!user) {
@@ -128,6 +158,12 @@ router.post("/membership", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
+  // Prevent downgrade (e.g., gold -> bronze)
+  if (MEMBERSHIP_LEVELS[tier] <= MEMBERSHIP_LEVELS[user.membership]) {
+    res.status(400).json({ message: "Mevcut planınızdan daha düşük bir plana geçemezsiniz" });
+    return;
+  }
+
   const price = MEMBERSHIP_PRICES[tier];
   if (user.balance < price) {
     res.status(400).json({ message: `Yetersiz bakiye. Gerekli: ${price} TRY, Mevcut: ${user.balance} TRY` });
@@ -156,4 +192,149 @@ router.post("/membership", requireAuth, async (req: AuthRequest, res) => {
   });
 });
 
+// ─── Profile Update ───────────────────────────────────────────────
+router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) { res.status(401).json({ message: "Yetkisiz" }); return; }
+
+    const { fullName, email } = req.body;
+
+    if (!fullName && !email) {
+      res.status(400).json({ message: "En az bir alan gerekli" });
+      return;
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) { res.status(404).json({ message: "Kullanici bulunamadi" }); return; }
+
+    if (fullName) {
+      if (String(fullName).trim().length < 2) {
+        res.status(400).json({ message: "Ad soyad en az 2 karakter olmalidir" });
+        return;
+      }
+      user.fullName = String(fullName).trim();
+    }
+
+    if (email) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        res.status(400).json({ message: "Gecerli bir e-posta adresi giriniz" });
+        return;
+      }
+      const existing = await User.findOne({ email, _id: { $ne: user._id } });
+      if (existing) {
+        res.status(400).json({ message: "Bu e-posta baska bir hesap tarafindan kullaniliyor" });
+        return;
+      }
+      user.email = email;
+    }
+
+    await user.save();
+
+    const token = signToken({
+      id: user._id.toString(),
+      membership: user.membership,
+      role: user.role as "user" | "expert",
+      fullName: user.fullName
+    });
+
+    res.json({
+      token,
+      user: { id: user._id.toString(), fullName: user.fullName, email: user.email, membership: user.membership, role: user.role },
+      message: "Profil basariyla guncellendi"
+    });
+  } catch (error: any) {
+    console.error("Profile update error:", error);
+    res.status(500).json({ message: error.message || "Sunucu hatasi", stack: process.env.NODE_ENV !== 'production' ? error.stack : undefined });
+  }
+});
+
+// ─── Cancel Membership ────────────────────────────────────────────
+router.post("/cancel-membership", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) { res.status(401).json({ message: "Yetkisiz" }); return; }
+
+    const user = await User.findById(req.user._id);
+    if (!user) { res.status(404).json({ message: "Kullanici bulunamadi" }); return; }
+
+    if (user.membership === "free") {
+      res.status(400).json({ message: "Zaten ucretsiz plandas\u0131n\u0131z" });
+      return;
+    }
+
+    const previousTier = user.membership;
+    user.membership = "free";
+    await user.save();
+
+    const token = signToken({
+      id: user._id.toString(),
+      membership: user.membership,
+      role: user.role as "user" | "expert",
+      fullName: user.fullName
+    });
+
+    res.json({
+      token,
+      membership: "free",
+      message: `${previousTier.toUpperCase()} uyeliginiz iptal edildi`
+    });
+  } catch (error) {
+    console.error("Membership cancel error:", error);
+    res.status(500).json({ message: "Sunucu hatasi" });
+  }
+});
+
+// ─── Forgot Password ──────────────────────────────────────────────
+router.post("/forgot-password", async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ email: String(email).toLowerCase() });
+    if (!user) {
+      // For security, don't reveal if user exists, but for UX in this demo, let's be helpful
+      return res.status(404).json({ message: "Bu e-posta adresi ile kayıtlı bir kullanıcı bulunamadı." });
+    }
+
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    user.resetPasswordCode = code;
+    user.resetPasswordExpires = new Date(Date.now() + 3600000); // 1 hour
+    await user.save();
+
+    await sendEmailCode(email, code, 'reset');
+    
+    res.json({ 
+      message: "Şifre sıfırlama kodu e-posta adresinize gönderildi.",
+      simulationCode: code 
+    });
+  } catch (error) {
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+// ─── Reset Password ───────────────────────────────────────────────
+router.post("/reset-password", async (req, res) => {
+  const { email, code, newPassword } = req.body;
+  try {
+    const user = await User.findOne({ 
+      email: String(email).toLowerCase(),
+      resetPasswordCode: code,
+      resetPasswordExpires: { $gt: new Date() }
+    });
+
+    if (!user) {
+      return res.status(400).json({ message: "Geçersiz veya süresi dolmuş sıfırlama kodu." });
+    }
+
+    const salt = await bcrypt.genSalt(10);
+    user.password = await bcrypt.hash(newPassword, salt);
+    user.resetPasswordCode = undefined;
+    user.resetPasswordExpires = undefined;
+    await user.save();
+
+    res.json({ message: "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
+  } catch (error) {
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
 export default router;
+

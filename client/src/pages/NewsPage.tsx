@@ -1,37 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { api } from "../api";
 import type { NewsItem } from "../types";
-import {
-  Alert,
-  Box,
-  Card,
-  CardActionArea,
-  CardContent,
-  CardMedia,
-  CircularProgress,
-  Chip,
-  Grid,
-  Stack,
-  TextField,
-  Typography
-} from "@mui/material";
+import { Alert, Box, Button, Card, CardActionArea, CardContent, CardMedia, CircularProgress, Chip, Grid, Stack, TextField, Typography } from "@mui/material";
+import { Article, Language, Search } from "@mui/icons-material";
 
-interface NewsResponse {
-  source: "cache" | "live";
-  items: NewsItem[];
-  warning?: string;
-  providerErrors?: string[];
-}
+interface NewsResponse { source: "cache" | "live"; items: NewsItem[]; warning?: string; providerErrors?: string[]; }
 
-const formatDate = (value: string): string => {
-  return new Date(value).toLocaleString("tr-TR", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit"
-  });
-};
+const formatDate = (value: string): string =>
+  new Date(value).toLocaleString("tr-TR", { year: "numeric", month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 
 export default function NewsPage() {
   const [scope, setScope] = useState<"tr" | "global">("tr");
@@ -44,9 +20,7 @@ export default function NewsPage() {
 
   useEffect(() => {
     const loadNews = async () => {
-      setLoading(true);
-      setError(null);
-      setWarning(null);
+      setLoading(true); setError(null); setWarning(null);
       try {
         const params = new URLSearchParams({ q: query, scope, limit: "10" });
         const res = await api.get<NewsResponse>(`/news/finance?${params.toString()}`);
@@ -55,13 +29,9 @@ export default function NewsPage() {
           const details = (res.data.providerErrors || []).slice(0, 2).join(" | ");
           setWarning(details ? `${res.data.warning} (${details})` : res.data.warning);
         }
-      } catch {
-        setError("Finans haberleri yuklenemedi.");
-      } finally {
-        setLoading(false);
-      }
+      } catch { setError("Finans haberleri yuklenemedi."); }
+      finally { setLoading(false); }
     };
-
     loadNews();
   }, [query, scope]);
 
@@ -69,113 +39,80 @@ export default function NewsPage() {
 
   return (
     <Box>
-      <Box
-        sx={{
-          p: 3,
-          mb: 3,
-          borderRadius: 3,
-          border: "1px solid",
-          borderColor: "divider",
-          background: "linear-gradient(130deg, #f8fbff 0%, #eef6ff 100%)"
-        }}
-      >
-        <Typography variant="h4" sx={{ fontWeight: 800, mb: 1 }}>
-          Finans Haberleri
+      {/* Header */}
+      <Box sx={{
+        p: 3, mb: 3, borderRadius: '16px',
+        background: 'linear-gradient(135deg, rgba(59,130,246,0.08) 0%, rgba(124,58,237,0.04) 100%)',
+        border: '1px solid rgba(59,130,246,0.15)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
+          <Article sx={{ color: '#3b82f6', fontSize: 28 }} />
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>Finans Haberleri</Typography>
+        </Box>
+        <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2.5 }}>
+          Borsa, kripto, emtia ve makro ekonomi başlıklarında güncel haber akışını takip edin.
         </Typography>
-        <Typography color="text.secondary" sx={{ mb: 2 }}>
-          Borsa, kripto, emtia ve makro ekonomi basliklarinda guncel haber akisini takip edin.
-        </Typography>
-        <Stack direction="row" spacing={1} sx={{ mb: 1.5 }}>
-          <Chip
-            label="Turkce"
-            clickable
-            color={scope === "tr" ? "primary" : "default"}
-            variant={scope === "tr" ? "filled" : "outlined"}
-            onClick={() => {
-              const defaultQuery = "finance OR economy OR market OR borsa OR crypto";
-              setScope("tr");
-              setQuery(defaultQuery);
-              setSearchInput(defaultQuery);
-            }}
-          />
-          <Chip
-            label="Yabanci"
-            clickable
-            color={scope === "global" ? "primary" : "default"}
-            variant={scope === "global" ? "filled" : "outlined"}
-            onClick={() => {
-              const defaultQuery = "finance OR economy OR market OR stocks OR crypto";
-              setScope("global");
-              setQuery(defaultQuery);
-              setSearchInput(defaultQuery);
-            }}
-          />
+
+        <Stack direction="row" spacing={1} sx={{ mb: 2 }}>
+          {[{ v: "tr" as const, l: "🇹🇷 Türkçe", dq: "finance OR economy OR market OR borsa OR crypto" },
+            { v: "global" as const, l: "🌍 Yabancı", dq: "finance OR economy OR market OR stocks OR crypto" }
+          ].map(s => (
+            <Chip key={s.v} label={s.l} clickable
+              onClick={() => { setScope(s.v); setQuery(s.dq); setSearchInput(s.dq); }}
+              sx={{
+                fontWeight: 600,
+                background: scope === s.v ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.03)',
+                color: scope === s.v ? '#00d4ff' : 'text.secondary',
+                border: `1px solid ${scope === s.v ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+                '&:hover': { background: 'rgba(0,212,255,0.08)' },
+              }} />
+          ))}
         </Stack>
-        <Stack direction={{ xs: "column", sm: "row" }} spacing={1.5}>
-          <TextField
-            fullWidth
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            placeholder={scope === "global" ? "Ornek: fed OR inflation OR bitcoin" : "Ornek: borsa OR faiz OR bitcoin"}
-            size="small"
-          />
-          <Chip
-            label="Yenile"
-            color="primary"
-            clickable
-            onClick={() => setQuery(searchInput.trim() || (scope === "global"
-              ? "finance OR economy OR market OR stocks OR crypto"
-              : "finance OR economy OR market OR borsa OR crypto"))}
-            sx={{ px: 1.5, height: 40, fontWeight: 700 }}
-          />
-        </Stack>
+
+       
       </Box>
 
-      {warning && !loading && (
-        <Alert severity="warning" sx={{ mb: 2 }}>
-          {warning}
-        </Alert>
-      )}
+      {warning && !loading && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
 
       {loading ? (
-        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}>
-          <CircularProgress />
-        </Box>
+        <Box sx={{ display: "flex", justifyContent: "center", py: 8 }}><CircularProgress /></Box>
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : !hasNews ? (
-        <Alert severity="info">Bu filtreye uygun haber bulunamadi.</Alert>
+        <Alert severity="info">Bu filtreye uygun haber bulunamadı.</Alert>
       ) : (
         <Grid container spacing={2}>
-          {news.map((item) => (
+          {news.map((item, index) => (
             <Grid xs={12} md={6} lg={4} key={`${item.url}-${item.publishedAt}`}>
-              <Card sx={{ height: "100%", borderRadius: 2.5, border: "1px solid", borderColor: "divider" }}>
-                <CardActionArea
-                  component="a"
-                  href={item.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  sx={{ height: "100%", alignItems: "stretch" }}
-                >
+              <Card elevation={0} sx={{
+                height: "100%",
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                animation: 'slideUp 0.5s ease-out forwards',
+                animationDelay: `${index * 0.06}s`, opacity: 0,
+                '&:hover': {
+                  borderColor: 'rgba(0,212,255,0.2)',
+                  '& .news-image': { transform: 'scale(1.05)' },
+                },
+              }}>
+                <CardActionArea component="a" href={item.url} target="_blank" rel="noopener noreferrer" sx={{ height: "100%", display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}>
                   {item.imageUrl && (
-                    <CardMedia
-                      component="img"
-                      image={item.imageUrl}
-                      alt={item.title}
-                      sx={{ height: 180, objectFit: "cover" }}
-                    />
+                    <Box sx={{ overflow: 'hidden' }}>
+                      <CardMedia component="img" image={item.imageUrl} alt={item.title} className="news-image"
+                        sx={{ height: 180, objectFit: "cover", transition: 'transform 0.4s ease' }} />
+                    </Box>
                   )}
-                  <CardContent>
-                    <Stack direction="row" justifyContent="space-between" alignItems="center" sx={{ mb: 1 }}>
-                      <Chip size="small" label={item.source} variant="outlined" />
-                      <Typography variant="caption" color="text.secondary">
-                        {formatDate(item.publishedAt)}
-                      </Typography>
+                  <CardContent sx={{ flex: 1 }}>
+                    <Stack direction="row" sx={{ mb: 1, justifyContent: "space-between", alignItems: "center" }}>
+                      <Chip size="small" label={item.source} sx={{
+                        fontSize: '0.6rem', height: 20, fontWeight: 600,
+                        background: 'rgba(0,212,255,0.08)', color: '#00d4ff',
+                        border: '1px solid rgba(0,212,255,0.15)',
+                      }} />
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>{formatDate(item.publishedAt)}</Typography>
                     </Stack>
-                    <Typography variant="h6" sx={{ fontSize: "1rem", fontWeight: 700, mb: 1 }}>
-                      {item.title}
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
+                    <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, lineHeight: 1.4, color: 'text.primary' }}>{item.title}</Typography>
+                    <Typography variant="caption" sx={{ color: 'text.secondary', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
                       {item.summary}
                     </Typography>
                   </CardContent>
@@ -188,3 +125,4 @@ export default function NewsPage() {
     </Box>
   );
 }
+
