@@ -346,7 +346,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
               </Box>
 
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
-                {mode === 'login' ? 'Tekrar Hoş Geldiniz' : 'Hesap Oluşturun'}
+                {mode === 'login' ? 'Hoş Geldiniz' : 'Hesap Oluşturun'}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
                 {mode === 'login' ? 'Hesabınıza giriş yapın' : 'Yeni hesabınızı oluşturun'}
