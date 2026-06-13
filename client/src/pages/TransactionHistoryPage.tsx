@@ -83,10 +83,32 @@ export default function TransactionHistoryPage() {
             <TextField fullWidth size="small" label="Sembol (Örn: BTC)" value={filters.symbol} onChange={(e) => handleFilterChange("symbol", e.target.value)} />
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
-            <TextField fullWidth type="date" size="small" label="Başlangıç" InputLabelProps={{ shrink: true }} value={filters.from} onChange={(e) => handleFilterChange("from", e.target.value)} />
+            <TextField
+              fullWidth
+              type="date"
+              size="small"
+              label="Başlangıç Tarihi"
+              slotProps={{
+                inputLabel: { shrink: true },
+                htmlInput: { style: { fontFamily: 'inherit', color: 'inherit' } }
+              }}
+              value={filters.from}
+              onChange={(e) => handleFilterChange("from", e.target.value)}
+            />
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
-            <TextField fullWidth type="date" size="small" label="Bitiş" InputLabelProps={{ shrink: true }} value={filters.to} onChange={(e) => handleFilterChange("to", e.target.value)} />
+            <TextField
+              fullWidth
+              type="date"
+              size="small"
+              label="Bitiş Tarihi"
+              slotProps={{
+                inputLabel: { shrink: true },
+                htmlInput: { style: { fontFamily: 'inherit', color: 'inherit' } }
+              }}
+              value={filters.to}
+              onChange={(e) => handleFilterChange("to", e.target.value)}
+            />
           </Grid>
           <Grid item xs={12} sm={12} md={2}>
             <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading}

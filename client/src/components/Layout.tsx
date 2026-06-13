@@ -29,7 +29,13 @@ import {
   AdminPanelSettings,
   TrendingUp,
   Person,
+  Assessment,
+  Star,
+  DarkMode,
+  LightMode,
 } from "@mui/icons-material";
+import NotificationBell from "./NotificationBell";
+import { useThemeMode } from "../contexts/ThemeContext";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
@@ -47,6 +53,7 @@ interface NavItem {
   path: string;
   label: string;
   icon: React.ReactNode;
+  adminOnly?: boolean;
 }
 
 const tierColors: Record<string, string> = {
@@ -62,24 +69,35 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { mode, toggleTheme } = useThemeMode();
+  const isDark = mode === 'dark';
 
-  const baseLinks: NavItem[] = [
-    { path: "/", label: "Dashboard", icon: <Dashboard /> },
-    { path: "/markets", label: "Piyasalar", icon: <ShowChart /> },
-    { path: "/news", label: "Haberler", icon: <Article /> },
-  ];
+  const baseLinks: NavItem[] = user?.isAdmin
+    ? [
+        { path: "/admin", label: "Admin", icon: <AdminPanelSettings />, adminOnly: true },
+      ]
+    : [
+        { path: "/", label: "Dashboard", icon: <Dashboard /> },
+        { path: "/markets", label: "Piyasalar", icon: <ShowChart /> },
+        { path: "/news", label: "Haberler", icon: <Article /> },
+      ];
 
   const userLinks: NavItem[] =
-    user?.role === "user"
+    user?.role === "user" && !user.isAdmin
       ? [
-          { path: "/portfolio", label: "Portföy", icon: <AccountBalanceWallet /> },
+          { path: "/watchlist", label: "Favoriler", icon: <Star /> },
+          { path: "/load-balance", label: "Cüzdan Yönetimi", icon: <AccountBalanceWallet /> },
           { path: "/transactions", label: "İşlem Geçmişi", icon: <Receipt /> },
           { path: "/trading", label: "Al/Sat", icon: <SwapHoriz /> },
           { path: "/chat", label: "Danışmanlar", icon: <People /> },
+          { path: "/analysis", label: "Analiz & Raporlar", icon: <Assessment /> },
         ]
-      : user?.role === "expert" ? [{ path: "/expert", label: "Uzman Paneli", icon: <AdminPanelSettings /> }] : [];
+      : user?.role === "expert" ? [
+          { path: "/expert", label: "Uzman Paneli", icon: <AdminPanelSettings /> },
+          { path: "/profile", label: "Profil", icon: <Person /> },
+        ] : [];
 
-  const allLinks = [...baseLinks, ...userLinks];
+  const allLinks = [...baseLinks, ...userLinks].filter(link => !link.adminOnly || (link.adminOnly && user?.isAdmin));
 
   const sidebarContent = (
     <Box
@@ -88,9 +106,9 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
-        background: 'rgba(10, 14, 39, 0.95)',
+        background: isDark ? 'rgba(10, 14, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(20px)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.06)',
+        borderRight: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
       }}
     >
       {/* Logo */}
@@ -207,7 +225,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           );
         })}
 
-        {user?.role === "user" && (
+        {user?.role === "user" && !user.isAdmin && (
           <>
             <Typography
               variant="caption"
@@ -345,7 +363,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               />
             </Box>
           </Box>
-          {user.role === "user" && (
+          {user.role === "user" && !user.isAdmin && (
             <Box
               sx={{
                 p: 1,
@@ -450,8 +468,8 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
             display: 'flex',
             alignItems: 'center',
             px: 3,
-            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
-            background: 'rgba(10, 14, 39, 0.6)',
+            borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
+            background: isDark ? 'rgba(10, 14, 39, 0.6)' : 'rgba(255, 255, 255, 0.6)',
             backdropFilter: 'blur(20px)',
             position: 'sticky',
             top: 0,
@@ -479,8 +497,26 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           )}
           <Box sx={{ flex: 1 }} />
           {user && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              {user.role === "user" && !isMobile && (
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+              <Tooltip title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
+                <IconButton
+                  onClick={toggleTheme}
+                  size="small"
+                  sx={{
+                    color: isDark ? '#f59e0b' : '#6366f1',
+                    background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                    border: isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(99, 102, 241, 0.15)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                      transform: 'rotate(30deg)',
+                    },
+                  }}
+                >
+                  {isDark ? <LightMode sx={{ fontSize: 20 }} /> : <DarkMode sx={{ fontSize: 20 }} />}
+                </IconButton>
+              </Tooltip>
+              {user.role === "user" && !user.isAdmin && !isMobile && (
                 <Chip
                   icon={<AccountBalanceWallet sx={{ fontSize: '1rem !important' }} />}
                   label={formatMoney(balance)}
@@ -493,6 +529,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                   }}
                 />
               )}
+              <NotificationBell />
               {!isMobile && (
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                   <Avatar

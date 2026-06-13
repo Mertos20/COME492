@@ -28,6 +28,7 @@ const signToken = (user: {
   membership: MembershipTier;
   role: "user" | "expert";
   fullName: string;
+  isAdmin?: boolean;
 }): string => jwt.sign(user, getSecret(), { expiresIn: "7d" });
 
 router.post("/register", async (req, res) => {
@@ -62,13 +63,14 @@ router.post("/register", async (req, res) => {
   }
 
   const hashed = await bcrypt.hash(password, 10);
-  const user = await User.create({ fullName, email, password: hashed });
+  const user = await User.create({ fullName, email, passwordHash: hashed });
 
   const payload = {
     id: user._id.toString(),
     membership: user.membership,
     role: user.role,
-    fullName: user.fullName
+    fullName: user.fullName,
+    isAdmin: user.isAdmin
   };
 
   res.status(201).json({ token: signToken(payload), user: payload, balance: user.balance });
@@ -88,7 +90,7 @@ router.post("/login", async (req, res) => {
     return;
   }
 
-  const valid = await bcrypt.compare(password, user.password);
+  const valid = await bcrypt.compare(password, user.passwordHash || (user as any).password);
   if (!valid) {
     res.status(401).json({ message: "E-posta veya sifre hatali" });
     return;
@@ -98,30 +100,39 @@ router.post("/login", async (req, res) => {
     id: user._id.toString(),
     membership: user.membership,
     role: user.role,
-    fullName: user.fullName
+    fullName: user.fullName,
+    isAdmin: user.isAdmin
   };
 
   res.json({ token: signToken(payload), user: payload, balance: user.balance });
 });
 
+// @desc    Get user profile
+// @access  Private
 router.get("/me", requireAuth, async (req: AuthRequest, res) => {
-  const user = await User.findById(req.user?.id).lean();
-  if (!user) {
-    res.status(404).json({ message: "Kullanici bulunamadi" });
-    return;
-  }
+  try {
+    const user = await User.findById(req.user?.id).lean();
+    if (!user) {
+      res.status(404).json({ message: "Kullanici bulunamadi" });
+      return;
+    }
 
-  res.json({
-    user: {
-      id: user._id,
-      fullName: user.fullName,
-      email: user.email,
-      membership: user.membership,
-      role: user.role
-    },
-    balance: user.balance,
-    holdings: user.holdings
-  });
+    res.json({
+      user: {
+        id: user._id,
+        fullName: user.fullName,
+        email: user.email,
+        membership: user.membership,
+        role: user.role,
+        isAdmin: user.isAdmin
+      },
+      balance: user.balance,
+      holdings: user.holdings
+    });
+  } catch (error) {
+    console.error("Error fetching user profile:", error);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
 router.get("/pricing", (_req, res) => {
@@ -235,12 +246,13 @@ router.put("/profile", requireAuth, async (req: AuthRequest, res) => {
       id: user._id.toString(),
       membership: user.membership,
       role: user.role as "user" | "expert",
-      fullName: user.fullName
+      fullName: user.fullName,
+      isAdmin: user.isAdmin
     });
 
     res.json({
       token,
-      user: { id: user._id.toString(), fullName: user.fullName, email: user.email, membership: user.membership, role: user.role },
+      user: { id: user._id.toString(), fullName: user.fullName, email: user.email, membership: user.membership, role: user.role, isAdmin: user.isAdmin },
       message: "Profil basariyla guncellendi"
     });
   } catch (error: any) {
@@ -270,7 +282,8 @@ router.post("/cancel-membership", requireAuth, async (req: AuthRequest, res) => 
       id: user._id.toString(),
       membership: user.membership,
       role: user.role as "user" | "expert",
-      fullName: user.fullName
+      fullName: user.fullName,
+      isAdmin: user.isAdmin
     });
 
     res.json({
@@ -301,10 +314,13 @@ router.post("/forgot-password", async (req, res) => {
 
     await sendEmailCode(email, code, 'reset');
     
-    res.json({ 
-      message: "Şifre sıfırlama kodu e-posta adresinize gönderildi.",
-      simulationCode: code 
-    });
+    const response: { message: string; simulationCode?: string } = { 
+      message: "Şifre sıfırlama kodu e-posta adresinize gönderildi."
+    };
+    if (process.env.NODE_ENV !== 'production') {
+      response.simulationCode = code;
+    }
+    res.json(response);
   } catch (error) {
     res.status(500).json({ message: "Sunucu hatası" });
   }
@@ -325,13 +341,50 @@ router.post("/reset-password", async (req, res) => {
     }
 
     const salt = await bcrypt.genSalt(10);
-    user.password = await bcrypt.hash(newPassword, salt);
+    user.passwordHash = await bcrypt.hash(newPassword, salt);
     user.resetPasswordCode = undefined;
     user.resetPasswordExpires = undefined;
     await user.save();
 
     res.json({ message: "Şifreniz başarıyla güncellendi. Yeni şifrenizle giriş yapabilirsiniz." });
   } catch (error) {
+    res.status(500).json({ message: "Sunucu hatası" });
+  }
+});
+
+// ─── Change Password ──────────────────────────────────────────────
+router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    if (!req.user) { res.status(401).json({ message: "Yetkisiz" }); return; }
+
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword) {
+      res.status(400).json({ message: "Mevcut şifre ve yeni şifre gereklidir" });
+      return;
+    }
+
+    if (String(newPassword).length < 6) {
+      res.status(400).json({ message: "Yeni şifre en az 6 karakter olmalıdır" });
+      return;
+    }
+
+    // Need to fetch user WITH passwordHash for comparison
+    const user = await User.findById(req.user._id).select("+passwordHash");
+    if (!user) { res.status(404).json({ message: "Kullanıcı bulunamadı" }); return; }
+
+    const isValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!isValid) {
+      res.status(400).json({ message: "Mevcut şifreniz hatalı" });
+      return;
+    }
+
+    user.passwordHash = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Şifreniz başarıyla değiştirildi" });
+  } catch (error) {
+    console.error("Change password error:", error);
     res.status(500).json({ message: "Sunucu hatası" });
   }
 });

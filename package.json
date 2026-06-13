@@ -18,10 +18,12 @@
     "@mui/material": "^9.0.0",
     "@mui/x-charts": "^9.0.0",
     "@types/nodemailer": "^8.0.0",
+    "@types/recharts": "^1.8.29",
     "nodemailer": "^8.0.5",
     "notistack": "^3.0.2",
     "react": "^19.2.4",
-    "react-dom": "^19.2.4"
+    "react-dom": "^19.2.4",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "concurrently": "^9.2.1"

@@ -8,7 +8,7 @@ import {
   TableHead, TableRow, IconButton
 } from "@mui/material";
 import { 
-  AccountBalanceWallet, SwapHoriz, TrendingUp, TrendingDown, Cancel 
+  AccountBalanceWallet, SwapHoriz, TrendingUp, TrendingDown, Cancel, NotificationsActive 
 } from "@mui/icons-material";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import CheckoutModal from "../components/CheckoutModal";
@@ -48,6 +48,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
 
+  // Alert state
+  const [alertTarget, setAlertTarget] = useState("");
+  const [alertCondition, setAlertCondition] = useState<"above" | "below">("above");
+  const [alertLoading, setAlertLoading] = useState(false);
+
   useEffect(() => {
     if (markets.length > 0 && !order.symbol) {
       setOrder((prev) => ({ ...prev, symbol: markets[0].symbol }));
@@ -81,21 +86,34 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
 
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
-    setLoading(true);
+    setError("");
+    setSuccess(`${formatMoney(Number(depositAmount))} başarıyla yüklendi!`);
+    setDepositAmount("10000");
+    onTradeComplete(); // Refresh balance from server
+    setTimeout(() => setSuccess(""), 4000);
+  };
+
+  const handleSetAlert = async () => {
+    if (!alertTarget || Number(alertTarget) <= 0) {
+      setError("Geçerli bir alarm fiyatı girin.");
+      return;
+    }
+    setAlertLoading(true);
     setError("");
     setSuccess("");
-
     try {
-      const amount = Number(depositAmount);
-      await api.post("/wallet/deposit", { amount });
-      setSuccess(`${formatMoney(amount)} başarıyla yüklendi!`);
-      setDepositAmount("10000");
-      onTradeComplete();
+      await api.post("/alerts", {
+        symbol: order.symbol,
+        targetPrice: Number(alertTarget),
+        condition: alertCondition
+      });
+      setSuccess(`${order.symbol} için fiyat alarmı kuruldu!`);
+      setAlertTarget("");
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Bakiye yükleme başarısız.");
+      setError(err.response?.data?.message || "Alarm kurulamadı.");
     } finally {
-      setLoading(false);
+      setAlertLoading(false);
     }
   };
 
@@ -402,6 +420,54 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             }}
           >
             {loading ? <CircularProgress size={24} color="inherit" /> : "Bakiye Ekle"}
+          </Button>
+        </Paper>
+
+        {/* Fiyat Alarmı */}
+        <Paper sx={{ mt: 3, p: 3, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+            <NotificationsActive sx={{ color: '#f59e0b' }} />
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>Fiyat Alarmı</Typography>
+          </Box>
+          <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+            {order.symbol} fiyatı belirlediğiniz seviyeye geldiğinde bildirim alın.
+          </Typography>
+          
+          <FormControl fullWidth size="small" sx={{ mb: 2 }}>
+            <InputLabel>Koşul</InputLabel>
+            <Select
+              value={alertCondition}
+              onChange={(e) => setAlertCondition(e.target.value as any)}
+              label="Koşul"
+            >
+              <MenuItem value="above">Fiyat Üstüne Çıkarsa</MenuItem>
+              <MenuItem value="below">Fiyat Altına Düşerse</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <TextField
+            fullWidth
+            size="small"
+            label="Hedef Fiyat (TRY)"
+            type="number"
+            value={alertTarget}
+            onChange={(e) => setAlertTarget(e.target.value)}
+            sx={{ mb: 2 }}
+            slotProps={{ input: { inputProps: { min: 0, step: 0.01 } } }}
+          />
+          
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleSetAlert}
+            disabled={alertLoading}
+            sx={{
+              background: 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)',
+              fontWeight: 700,
+              '&:hover': { background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }
+            }}
+          >
+            {alertLoading ? <CircularProgress size={24} color="inherit" /> : "Alarm Kur"}
           </Button>
         </Paper>
       </Grid>

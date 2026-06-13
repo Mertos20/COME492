@@ -34,6 +34,9 @@ const fallbackSeed: Omit<MarketInstrument, "history30d">[] = [
   { symbol: "ETHUSDT", name: "Ethereum", category: "crypto", price: 3500, change30d: 4.1, popular: true },
   { symbol: "SOLUSDT", name: "Solana", category: "crypto", price: 145, change30d: 8.4, popular: false },
   { symbol: "XAUUSD", name: "Ons Altın", category: "gold", price: 2200, change30d: 2.1, popular: true },
+  { symbol: "GRAM_ALTIN", name: "Gram Altın", category: "gold", price: 2624, change30d: 3.5, popular: true },
+  { symbol: "CEYREK_ALTIN", name: "Çeyrek Altın", category: "gold", price: 4277, change30d: 3.5, popular: true },
+  { symbol: "TAM_ALTIN", name: "Tam Altın", category: "gold", price: 17110, change30d: 3.5, popular: false },
   { symbol: "XAGUSD", name: "Ons Gümüş", category: "silver", price: 24.5, change30d: 1.9, popular: true },
   { symbol: "USDTRY", name: "Dolar/TL", category: "forex", price: 37.1, change30d: 1.4, popular: true },
   { symbol: "EURTRY", name: "Euro/TL", category: "forex", price: 40.2, change30d: 0.9, popular: true },
@@ -163,11 +166,26 @@ const composeLiveInstruments = async (): Promise<MarketInstrument[]> => {
     return normalizeNumber(((price - hist[0]) / hist[0]) * 100, 0);
   };
 
+  const gramPrice = normalizeNumber((xauPrice / 31.1034768) * usdtryPrice, 2600);
+  const ceyrekPrice = normalizeNumber(gramPrice * 1.63, 4200);
+  const tamPrice = normalizeNumber(ceyrekPrice * 4, 16800);
+
+  const histLen = Math.min(xauHist.length, usdtryHist.length);
+  const gramHist: number[] = [];
+  for (let i = 0; i < histLen; i++) {
+    gramHist.push(normalizeNumber((xauHist[i] / 31.1034768) * usdtryHist[i], 2600));
+  }
+  const ceyrekHist = gramHist.map(p => normalizeNumber(p * 1.63, 4200));
+  const tamHist = ceyrekHist.map(p => normalizeNumber(p * 4, 16800));
+
   return [
     { symbol: "BTCUSDT", name: "Bitcoin", category: "crypto", price: btcPrice, change30d: normalizeNumber(btc?.price_change_percentage_30d_in_currency, 0), popular: true, history30d: btcHist },
     { symbol: "ETHUSDT", name: "Ethereum", category: "crypto", price: ethPrice, change30d: normalizeNumber(eth?.price_change_percentage_30d_in_currency, 0), popular: true, history30d: ethHist },
     { symbol: "SOLUSDT", name: "Solana", category: "crypto", price: solPrice, change30d: normalizeNumber(sol?.price_change_percentage_30d_in_currency, 0), popular: false, history30d: solHist },
     { symbol: "XAUUSD", name: "Ons Altın", category: "gold", price: xauPrice, change30d: normalizeNumber(xau?.price_change_percentage_30d_in_currency, 0), popular: true, history30d: xauHist },
+    { symbol: "GRAM_ALTIN", name: "Gram Altın", category: "gold", price: gramPrice, change30d: calcChange(gramPrice, gramHist), popular: true, history30d: gramHist },
+    { symbol: "CEYREK_ALTIN", name: "Çeyrek Altın", category: "gold", price: ceyrekPrice, change30d: calcChange(ceyrekPrice, ceyrekHist), popular: true, history30d: ceyrekHist },
+    { symbol: "TAM_ALTIN", name: "Tam Altın", category: "gold", price: tamPrice, change30d: calcChange(tamPrice, tamHist), popular: false, history30d: tamHist },
     { symbol: "XAGUSD", name: "Ons Gümüş", category: "silver", price: xagPrice, change30d: normalizeNumber(xag?.price_change_percentage_30d_in_currency, 0), popular: true, history30d: xagHist },
     { symbol: "USDTRY", name: "Dolar/TL", category: "forex", price: usdtryPrice, change30d: calcChange(usdtryPrice, usdtryHist), popular: true, history30d: usdtryHist },
     { symbol: "EURTRY", name: "Euro/TL", category: "forex", price: eurtryPrice, change30d: calcChange(eurtryPrice, eurtryHist), popular: true, history30d: eurtryHist },

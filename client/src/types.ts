@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   role: "user" | "expert";
   membership: MembershipTier;
+  isAdmin?: boolean;
 }
 
 export interface MarketInstrument {
@@ -80,3 +81,17 @@ export interface NewsItem {
   publishedAt: string;
   source: string;
 }
+
+export interface IUser {
+  _id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  role: "user" | "expert";
+  membership: MembershipTier;
+  expertTier?: Exclude<MembershipTier, "free">;
+  balance: number;
+  lockedBalance: number;
+  isAdmin: boolean;
+}
+

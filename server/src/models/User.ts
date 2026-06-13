@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from "mongoose";
+import bcrypt from "bcryptjs";
 
 export type MembershipTier = "free" | "bronze" | "silver" | "gold";
 export type UserRole = "user" | "expert";
@@ -12,7 +13,7 @@ export interface IHolding {
 export interface IUser extends Document {
   fullName: string;
   email: string;
-  password: string;
+  passwordHash: string;
   membership: MembershipTier;
   role: UserRole;
   expertTier?: Exclude<MembershipTier, "free">;
@@ -20,8 +21,14 @@ export interface IUser extends Document {
   lockedBalance: number;
   holdings: IHolding[];
   lockedHoldings: IHolding[];
+  watchlist: string[];
   resetPasswordCode?: string;
   resetPasswordExpires?: Date;
+  username: string;
+  isAdmin: boolean;
+  aiQueriesToday: number;
+  lastAiQueryDate: string;
+  comparePassword(candidatePassword: string): Promise<boolean>;
 }
 
 const HoldingSchema = new Schema<IHolding>(
@@ -37,7 +44,7 @@ const UserSchema = new Schema<IUser>(
   {
     fullName: { type: String, required: true, trim: true },
     email: { type: String, required: true, unique: true, lowercase: true, trim: true },
-    password: { type: String, required: true },
+    passwordHash: { type: String, required: true },
     membership: {
       type: String,
       enum: ["free", "bronze", "silver", "gold"],
@@ -49,11 +56,21 @@ const UserSchema = new Schema<IUser>(
     lockedBalance: { type: Number, default: 0 },
     holdings: { type: [HoldingSchema], default: [] },
     lockedHoldings: { type: [HoldingSchema], default: [] },
+    watchlist: { type: [String], default: [] },
     resetPasswordCode: { type: String },
     resetPasswordExpires: { type: Date },
+    username: { type: String },
+    isAdmin: { type: Boolean, default: false },
+    aiQueriesToday: { type: Number, default: 0 },
+    lastAiQueryDate: { type: String, default: "" },
   },
   { timestamps: true }
 );
+
+// Method to compare passwords
+UserSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+  return bcrypt.compare(candidatePassword, this.passwordHash);
+};
 
 UserSchema.pre("validate", function () {
   if (this.role !== "user" && this.role !== "expert") {

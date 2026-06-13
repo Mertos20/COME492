@@ -3,7 +3,7 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface ITransaction extends Document {
   userId: mongoose.Types.ObjectId;
   symbol: string;
-  type: "buy" | "sell" | "deposit" | "upgrade";
+  type: "buy" | "sell" | "deposit" | "upgrade" | "withdraw";
   quantity: number;
   price: number;
   total: number;
@@ -13,7 +13,7 @@ const TransactionSchema = new Schema<ITransaction>(
   {
     userId: { type: Schema.Types.ObjectId, ref: "User", required: true },
     symbol: { type: String, required: true },
-    type: { type: String, enum: ["buy", "sell", "deposit", "upgrade"], required: true },
+    type: { type: String, enum: ["buy", "sell", "deposit", "upgrade", "withdraw"], required: true },
     quantity: { type: Number, required: true },
     price: { type: Number, required: true },
     total: { type: Number, required: true }

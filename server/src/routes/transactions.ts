@@ -6,7 +6,7 @@ const router = Router();
 
 router.get("/history", requireAuth, async (req: AuthRequest, res) => {
   const { type, symbol, from, to } = req.query as {
-    type?: "buy" | "sell" | "deposit";
+    type?: "buy" | "sell" | "deposit" | "upgrade" | "withdraw";
     symbol?: string;
     from?: string;
     to?: string;
@@ -19,12 +19,12 @@ router.get("/history", requireAuth, async (req: AuthRequest, res) => {
 
   const query: {
     userId: string;
-    type?: "buy" | "sell" | "deposit";
+    type?: "buy" | "sell" | "deposit" | "upgrade" | "withdraw";
     symbol?: string;
     createdAt?: { $gte?: Date; $lte?: Date };
   } = { userId: req.user.id };
 
-  if (type && ["buy", "sell", "deposit"].includes(type)) {
+  if (type && ["buy", "sell", "deposit", "upgrade", "withdraw"].includes(type)) {
     query.type = type;
   }
 

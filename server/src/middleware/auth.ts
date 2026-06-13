@@ -18,7 +18,7 @@ export const requireAuth = async (req: AuthRequest, res: Response, next: NextFun
 
   try {
     const payload = jwt.verify(token, getSecret()) as { id: string };
-    const user = await User.findById(payload.id).select("-password");
+    const user = await User.findById(payload.id).select("-passwordHash");
 
     if (!user) {
       res.status(401).json({ message: "Kullanıcı bulunamadı" });

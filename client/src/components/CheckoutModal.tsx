@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { 
   Dialog, DialogTitle, DialogContent, DialogActions, Button, 
   TextField, Typography, Box, CircularProgress, IconButton, 
-  InputAdornment, Grid 
+  InputAdornment, Grid, Alert 
 } from '@mui/material';
 import { Close, CreditCard, Lock } from '@mui/icons-material';
 import { api } from '../api';
@@ -48,6 +48,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
     expiry: '',
     cvc: '',
   });
+  const [apiError, setApiError] = useState('');
 
   const validate = () => {
     const newErrors = { cardName: '', cardNumber: '', expiry: '', cvc: '' };
@@ -92,6 +93,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
       if (!validate()) return;
       
       setLoading(true);
+      setApiError('');
       try {
         // Call request-load on backend
         const res = await api.post('/wallet/request-load', { 
@@ -100,8 +102,8 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
         });
         setSimulationCode(res.data.simulationCode || '');
         setStep(2);
-      } catch (err) {
-        console.error("Payment request failed");
+      } catch (err: any) {
+        setApiError(err.response?.data?.message || 'Ödeme isteği başarısız oldu. Lütfen tekrar deneyin.');
       } finally {
         setLoading(false);
       }
@@ -109,12 +111,13 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
       if (verificationCode.length < 6) return;
       
       setLoading(true);
+      setApiError('');
       try {
         // Call verify-load on backend
         await api.post('/wallet/verify-load', { code: verificationCode });
         onSuccess();
-      } catch (err) {
-        console.error("Verification failed");
+      } catch (err: any) {
+        setApiError(err.response?.data?.message || 'Doğrulama başarısız oldu. Lütfen tekrar deneyin.');
       } finally {
         setLoading(false);
       }
@@ -129,6 +132,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
     setCvc('');
     setVerificationCode('');
     setStep(1);
+    setApiError('');
     onClose();
   };
 
@@ -298,6 +302,12 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
                 required
               />
             </Box>
+          )}
+
+          {apiError && (
+            <Alert severity="error" sx={{ mt: 2 }} onClose={() => setApiError('')}>
+              {apiError}
+            </Alert>
           )}
 
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3, justifyContent: 'center' }}>

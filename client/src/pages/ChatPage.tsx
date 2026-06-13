@@ -76,8 +76,12 @@ export default function ChatPage({ user, token }: ChatPageProps) {
     try {
       const res = await api.post<{ response: string }>("/ai/chat", { message: userMsg });
       setAiMessages(prev => [...prev, { role: "ai", content: res.data.response }]);
-    } catch { setAiMessages(prev => [...prev, { role: "ai", content: "Üzgünüm, AI danışman şu an kullanılamıyor." }]); }
-    finally { setLoadingAi(false); }
+    } catch (err: any) {
+      const errMsg = err.response?.data?.message || "Üzgünüm, AI danışman şu an kullanılamıyor.";
+      setAiMessages(prev => [...prev, { role: "ai", content: errMsg }]);
+    } finally {
+      setLoadingAi(false);
+    }
   };
 
   if (!user || user.role !== "user") return <Alert severity="warning">Bu sayfa sadece Kullanıcı paneli için erişilebilir.</Alert>;
@@ -92,9 +96,9 @@ export default function ChatPage({ user, token }: ChatPageProps) {
 
       <Grid container spacing={3}>
         {/* AI Chat */}
-        <Grid xs={12} md={canAccessExperts ? 6 : 12}>
+        <Grid item xs={12}>
           <Paper elevation={0} sx={{
-            p: 0, height: 520, display: 'flex', flexDirection: 'column',
+            p: 0, display: 'flex', flexDirection: 'column',
             background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
             overflow: 'hidden',
           }}>
@@ -105,7 +109,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary' }}>Gemini AI tarafından destekleniyor</Typography>
             </Box>
-            <Box sx={{ flex: 1, p: 2, overflowY: 'auto', background: 'rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+            <Box sx={{ height: 400, p: 2, overflowY: 'auto', background: 'rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {aiMessages.map((msg, idx) => (
                 <Box key={idx} sx={{
                   display: 'flex', gap: 1.5, animation: 'slideUp 0.4s ease-out',
@@ -164,9 +168,9 @@ export default function ChatPage({ user, token }: ChatPageProps) {
 
         {/* Expert Chat */}
         {canAccessExperts && (
-          <Grid xs={12} md={6}>
+          <Grid item xs={12}>
             <Paper elevation={0} sx={{
-              p: 0, height: 520, display: 'flex', flexDirection: 'column',
+              p: 0, display: 'flex', flexDirection: 'column',
               background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)',
               overflow: 'hidden',
             }}>
@@ -194,7 +198,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
                 Uygun uzmanlar: {tierExperts.map(e => e.fullName).join(", ") || "Yok"}
               </Typography>
 
-              <Box sx={{ flex: 1, p: 1.5, overflowY: 'auto', background: 'rgba(0,0,0,0.1)' }}>
+              <Box sx={{ height: 400, p: 1.5, overflowY: 'auto', background: 'rgba(0,0,0,0.1)' }}>
                 {messages.length === 0 && (
                   <Alert severity="info" sx={{ mx: 1 }}>Henüz mesaj yok. İlk mesajı gönderin.</Alert>
                 )}

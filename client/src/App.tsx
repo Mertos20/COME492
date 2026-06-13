@@ -17,15 +17,19 @@ import ExpertPanelPage from "./pages/ExpertPanelPage";
 import BalanceLoadPage from "./pages/BalanceLoadPage";
 import NewsPage from "./pages/NewsPage";
 import ProfilePage from "./pages/ProfilePage";
+import AdminPage from "./pages/AdminPage";
+import AnalysisPage from "./pages/AnalysisPage";
+import WatchlistPage from "./pages/WatchlistPage";
 
 const plans = ["free", "bronze", "silver", "gold"] as const;
 
-const normalizeUser = (raw: Partial<AuthUser & { email?: string }>): AuthUser => ({
+const normalizeUser = (raw: Partial<AuthUser & { email?: string; isAdmin?: boolean }>): AuthUser => ({
   id: raw.id || "",
   fullName: raw.fullName || "Kullanici",
   email: raw.email || "",
   role: raw.role === "expert" ? "expert" : "user",
-  membership: raw.membership && plans.includes(raw.membership) ? raw.membership : "free"
+  membership: raw.membership && plans.includes(raw.membership) ? raw.membership : "free",
+  isAdmin: raw.isAdmin || false,
 });
 
 function App() {
@@ -69,7 +73,7 @@ function App() {
       // Load user if token exists
       if (token) {
         try {
-          const me = await api.get<{ user: AuthUser; balance: number }>("/auth/me");
+          const me = await api.get<{ user: AuthUser; balance: number; isAdmin: boolean }>("/auth/me");
           const safeUser = normalizeUser(me.data.user);
           setUser(safeUser);
           setBalance(me.data.balance);
@@ -181,38 +185,50 @@ function App() {
       ) : (
         <Layout user={user} balance={balance} onLogout={handleLogout}>
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
-            <Route path="/markets" element={<MarketsPage />} />
-            <Route path="/news" element={<NewsPage />} />
-            <Route path="/subscriptions" element={<SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} onBalanceChange={setBalance} />} />
+            <Route path="/" element={user?.isAdmin ? <Navigate to="/admin" /> : <DashboardPage />} />
+            <Route path="/markets" element={user?.isAdmin ? <Navigate to="/admin" /> : <MarketsPage />} />
+            <Route path="/news" element={user?.isAdmin ? <Navigate to="/admin" /> : <NewsPage />} />
+            <Route path="/subscriptions" element={user?.isAdmin ? <Navigate to="/admin" /> : <SubscriptionPage user={user} balance={balance} onUpgrade={handleUpgrade} onBalanceChange={setBalance} />} />
             <Route
               path="/deposit"
-              element={user?.role === "user" ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />}
+              element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />}
             />
             <Route
               path="/trading"
-              element={user?.role === "user" ? <TradingPage balance={balance} onTradeComplete={handleTradeComplete} /> : <Navigate to="/" />}
+              element={user?.role === "user" && !user.isAdmin ? <TradingPage balance={balance} onTradeComplete={handleTradeComplete} /> : <Navigate to="/" />}
             />
             <Route
               path="/portfolio"
-              element={user?.role === "user" ? <PortfolioPage /> : <Navigate to="/" />}
+              element={user?.role === "user" && !user.isAdmin ? <PortfolioPage /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/watchlist"
+              element={user?.role === "user" && !user.isAdmin ? <WatchlistPage /> : <Navigate to="/" />}
             />
             <Route
               path="/transactions"
-              element={user?.role === "user" ? <TransactionHistoryPage /> : <Navigate to="/" />}
+              element={user?.role === "user" && !user.isAdmin ? <TransactionHistoryPage /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/admin"
+              element={user?.isAdmin ? <AdminPage /> : <Navigate to="/" />}
             />
             <Route
               path="/chat"
-              element={user?.role === "user" ? <ChatPage user={user} token={token} /> : <Navigate to="/" />}
+              element={user?.role === "user" && !user.isAdmin ? <ChatPage user={user} token={token} /> : <Navigate to="/" />}
+            />
+            <Route
+              path="/analysis"
+              element={user?.role === "user" && !user.isAdmin ? <AnalysisPage /> : <Navigate to="/" />}
             />
             <Route
               path="/expert"
               element={user?.role === "expert" ? <ExpertPanelPage user={user} token={token} /> : <Navigate to="/" />}
             />
-            <Route path="/load-balance" element={user?.role === "user" ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />} />
+            <Route path="/load-balance" element={user?.role === "user" && !user.isAdmin ? <BalanceLoadPage onBalanceChange={handleTradeComplete} /> : <Navigate to="/" />} />
             <Route
               path="/profile"
-              element={<ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
+              element={user?.isAdmin ? <Navigate to="/admin" /> : <ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
             />
             <Route path="*" element={<Navigate to="/" />} />
           </Routes>

@@ -48,6 +48,59 @@ router.post("/deposit", requireAuth, async (req: AuthRequest, res) => {
   }
 });
 
+router.post("/withdraw", requireAuth, async (req: AuthRequest, res) => {
+  try {
+    const amount = Number(req.body.amount);
+    const { iban, accountName } = req.body;
+
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return res.status(400).json({ message: "Geçersiz tutar" });
+    }
+
+    if (!iban || !accountName) {
+      return res.status(400).json({ message: "IBAN ve hesap sahibi bilgileri zorunludur" });
+    }
+
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+
+    if (user.balance < amount) {
+      return res.status(400).json({ message: "Yetersiz bakiye" });
+    }
+
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $inc: { balance: -amount } },
+      { new: true, projection: { balance: 1 } }
+    ).lean();
+
+    if (!updatedUser) {
+      return res.status(404).json({ message: "Kullanıcı bulunamadı" });
+    }
+
+    await Transaction.create({
+      userId,
+      symbol: "TRY",
+      type: "withdraw",
+      quantity: 1,
+      price: amount,
+      total: amount
+    });
+
+    res.json({ balance: updatedUser.balance, message: "Para çekme talebiniz alındı." });
+  } catch (error) {
+    console.error("Withdraw error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 router.get("/balance", requireAuth, async (req: AuthRequest, res) => {
   const user = await User.findById(req.user?.id).lean();
   if (!user) {
@@ -89,10 +142,13 @@ router.post("/request-load", requireAuth, async (req: AuthRequest, res) => {
 
   try {
     await sendEmailCode(user.email, code, 'deposit');
-    res.status(200).json({ 
-      message: "Doğrulama kodu gönderildi.",
-      simulationCode: code 
-    });
+    const response: { message: string; simulationCode?: string } = { 
+      message: "Doğrulama kodu gönderildi." 
+    };
+    if (process.env.NODE_ENV !== 'production') {
+      response.simulationCode = code;
+    }
+    res.status(200).json(response);
   } catch (error) {
     console.error("E-posta gönderme hatası:", error);
     res.status(500).json({ message: "Doğrulama kodu gönderilemedi." });

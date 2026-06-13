@@ -5,7 +5,7 @@ import {
   Box, Typography, Paper, TextField, Button, Stack, Alert, Avatar, Chip, Divider, CircularProgress,
   Dialog, DialogTitle, DialogContent, DialogActions
 } from '@mui/material';
-import { Person, Email, Edit, Save, WorkspacePremium, Cancel } from '@mui/icons-material';
+import { Person, Email, Edit, Save, WorkspacePremium, Cancel, Lock } from '@mui/icons-material';
 
 interface ProfilePageProps {
   user: AuthUser | null;
@@ -29,6 +29,10 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
   const [cancelDialog, setCancelDialog] = useState(false);
+  const [passwordData, setPasswordData] = useState({ currentPassword: '', newPassword: '', confirmPassword: '' });
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
 
   if (!user) return <Alert severity="warning">Giriş yapmanız gerekiyor.</Alert>;
 
@@ -62,6 +66,43 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
       setError(err.response?.data?.message || 'Üyelik iptal edilemedi');
     } finally {
       setCancelLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    setPasswordLoading(true);
+    setPasswordError('');
+    setPasswordSuccess('');
+
+    if (!passwordData.currentPassword || !passwordData.newPassword) {
+      setPasswordError('Tüm alanlar zorunludur');
+      setPasswordLoading(false);
+      return;
+    }
+
+    if (passwordData.newPassword.length < 6) {
+      setPasswordError('Yeni şifre en az 6 karakter olmalıdır');
+      setPasswordLoading(false);
+      return;
+    }
+
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setPasswordError('Yeni şifreler eşleşmiyor');
+      setPasswordLoading(false);
+      return;
+    }
+
+    try {
+      const res = await api.post<{ message: string }>('/auth/change-password', {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword,
+      });
+      setPasswordSuccess(res.data.message);
+      setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
+    } catch (err: any) {
+      setPasswordError(err.response?.data?.message || 'Şifre değiştirilemedi');
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -204,6 +245,55 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
           </Button>
         </Paper>
       )}
+
+      {/* Password Change */}
+      <Paper elevation={0} sx={{
+        p: 3, mb: 3,
+        background: 'rgba(255,255,255,0.02)',
+        border: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
+          <Lock sx={{ color: '#7c3aed', fontSize: 20 }} />
+          <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Şifre Değiştir</Typography>
+        </Box>
+
+        {passwordSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPasswordSuccess('')}>{passwordSuccess}</Alert>}
+        {passwordError && <Alert severity="error" sx={{ mb: 2 }} onClose={() => setPasswordError('')}>{passwordError}</Alert>}
+
+        <Stack spacing={2}>
+          <TextField
+            fullWidth size="small" type="password" label="Mevcut Şifre"
+            value={passwordData.currentPassword}
+            onChange={(e) => setPasswordData(p => ({ ...p, currentPassword: e.target.value }))}
+            slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
+          />
+          <TextField
+            fullWidth size="small" type="password" label="Yeni Şifre"
+            value={passwordData.newPassword}
+            onChange={(e) => setPasswordData(p => ({ ...p, newPassword: e.target.value }))}
+            slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
+          />
+          <TextField
+            fullWidth size="small" type="password" label="Yeni Şifre (Tekrar)"
+            value={passwordData.confirmPassword}
+            onChange={(e) => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))}
+            slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
+          />
+          <Button
+            variant="contained"
+            onClick={handlePasswordChange}
+            disabled={passwordLoading || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
+            startIcon={passwordLoading ? <CircularProgress size={16} /> : <Save />}
+            sx={{
+              py: 1.2, fontWeight: 700, alignSelf: 'flex-start',
+              background: 'linear-gradient(135deg, #7c3aed 0%, #3b82f6 100%)',
+              '&:hover': { background: 'linear-gradient(135deg, #6d28d9 0%, #2563eb 100%)' },
+            }}
+          >
+            Şifreyi Değiştir
+          </Button>
+        </Stack>
+      </Paper>
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={cancelDialog} onClose={() => setCancelDialog(false)}>

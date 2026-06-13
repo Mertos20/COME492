@@ -171,7 +171,7 @@ export default function DashboardPage() {
   }
 
   const quickActions = [
-      { title: "Bakiye Yükle", to: "/load-balance", description: "Cüzdanınıza para ekleyin", icon: <AddCard /> },
+      { title: "Cüzdan Yönetimi", to: "/load-balance", description: "Cüzdanınıza para ekleyin veya çekin", icon: <AddCard /> },
       { title: "Al / Sat", to: "/trading", description: "Enstrüman ticareti yapın", icon: <ShowChart /> },
       { title: "Portföy", to: "/portfolio", description: "Varlıklarınızı inceleyin", icon: <AccountBalanceWallet /> },
       { title: "İşlem Geçmişi", to: "/transactions", description: "Tüm işlemlerinizi görün", icon: <Receipt /> },

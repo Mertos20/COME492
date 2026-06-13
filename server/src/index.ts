@@ -1,5 +1,4 @@
 import dotenv from "dotenv";
-console.log("[System] Forcing server restart to apply User model migration hook...");
 import path from "path";
 import http from "http";
 import cors from "cors";
@@ -18,9 +17,15 @@ import chatRoutes from "./routes/chat";
 import aiRoutes from "./routes/ai";
 import transactionsRoutes from "./routes/transactions";
 import newsRoutes from "./routes/news";
+import adminRoutes from "./routes/admin";
+import analysisRoutes from "./routes/analysis";
 import ChatMessage from "./models/ChatMessage";
+import User from "./models/User";
 import { seedExperts } from "./utils/seedExperts";
 import { getAllInstruments } from "./utils/marketData";
+import { processPendingOrders } from "./utils/orderEngine";
+import { processAlerts } from "./utils/alertEngine";
+import alertsRoutes from "./routes/alerts";
 
 // Load .env from root directory
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
@@ -82,6 +87,9 @@ app.use("/api/chat", chatRoutes);
 app.use("/api/ai", aiLimiter, aiRoutes);
 app.use("/api/transactions", transactionsRoutes);
 app.use("/api/news", newsRoutes);
+app.use("/api/admin", adminRoutes);
+app.use("/api/analysis", analysisRoutes);
+app.use("/api/alerts", alertsRoutes);
 
 io.use((socket, next) => {
   try {
@@ -149,7 +157,6 @@ io.on("connection", (socket) => {
   });
 });
 
-import { processPendingOrders } from "./utils/orderEngine";
 
 marketNamespace.on("connection", async (socket) => {
   const snapshot = await getAllInstruments();
@@ -163,6 +170,13 @@ setInterval(async () => {
     const updatedSnapshot = await getAllInstruments();
     marketNamespace.emit("market:update", updatedSnapshot);
     await processPendingOrders(updatedSnapshot);
+    
+    // Process price alerts
+    const snapshotMap = updatedSnapshot.reduce((acc, inst) => {
+      acc[inst.symbol] = inst;
+      return acc;
+    }, {} as Record<string, any>);
+    await processAlerts(snapshotMap, io);
   } catch (err) {
     console.error("Global market loop error:", err);
   }
@@ -176,6 +190,22 @@ const startServer = async () => {
     }
     await mongoose.connect(mongoUri);
     console.log("MongoDB connected");
+
+    // Migration: Update users with old 'password' field to 'passwordHash'
+    const rawUsers = await User.find({ passwordHash: { $exists: false } }).lean();
+    for (const rawUser of rawUsers) {
+      if ((rawUser as any).password) {
+        await User.updateOne(
+          { _id: rawUser._id },
+          { 
+            $set: { passwordHash: (rawUser as any).password },
+            $unset: { password: "" }
+          }
+        );
+        console.log(`[Migration] Migrated user ${rawUser.email || rawUser._id} to use passwordHash`);
+      }
+    }
+
     await seedExperts();
 
     const port = Number(process.env.PORT || 5000);

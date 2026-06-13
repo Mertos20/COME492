@@ -164,7 +164,7 @@ router.delete("/orders/:id", requireAuth, async (req: AuthRequest, res) => {
         user.lockedHoldings = user.lockedHoldings.filter((item: IHolding) => item.symbol !== order.symbol);
       }
     }
-    
+
     let holding = user.holdings.find((item: IHolding) => item.symbol === order.symbol);
     if (!holding) {
       user.holdings.push({ symbol: order.symbol, quantity: order.quantity, avgBuyPrice: lockedHolding?.avgBuyPrice || 0 });

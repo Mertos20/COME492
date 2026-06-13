@@ -2,8 +2,8 @@ import { useEffect, useState } from "react";
 import type { MarketInstrument } from "../types";
 import { api } from "../api";
 import { io } from "socket.io-client";
-import { Grid, Card, CardContent, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Chip } from "@mui/material";
-import { TrendingUp, TrendingDown, BarChart } from "@mui/icons-material";
+import { Grid, Card, CardContent, Typography, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Box, Chip, IconButton } from "@mui/material";
+import { TrendingUp, TrendingDown, BarChart, Star, StarBorder } from "@mui/icons-material";
 import ChartModal from "../components/ChartModal";
 
 const formatMoney = (value: number): string =>
@@ -23,6 +23,29 @@ export default function MarketsPage() {
   const popular = markets.filter((item) => item.popular);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChart, setSelectedChart] = useState<MarketInstrument | null>(null);
+  const [watchlist, setWatchlist] = useState<string[]>([]);
+  const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
+
+  useEffect(() => {
+    const fetchWatchlist = async () => {
+      try {
+        const res = await api.get('/portfolio/watchlist');
+        setWatchlist(res.data.watchlist || []);
+      } catch (err) {
+        console.error("Failed to fetch watchlist", err);
+      }
+    };
+    fetchWatchlist();
+  }, []);
+
+  const toggleWatchlist = async (symbol: string) => {
+    try {
+      const res = await api.post('/portfolio/watchlist', { symbol });
+      setWatchlist(res.data.watchlist || []);
+    } catch (err) {
+      console.error("Failed to toggle watchlist", err);
+    }
+  };
 
   if (loading) {
     return <Box sx={{ p: 4, textAlign: 'center' }}><Typography>Yükleniyor...</Typography></Box>;
@@ -89,25 +112,34 @@ export default function MarketsPage() {
                       {item.change30d.toFixed(2)}%
                     </Typography>
                   </Box>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={() => handleOpenChart(item)}
-                    startIcon={<BarChart sx={{ fontSize: '1rem !important' }} />}
-                    sx={{
-                      fontSize: '0.7rem',
-                      py: 0.3,
-                      borderColor: 'rgba(255,255,255,0.1)',
-                      color: 'text.secondary',
-                      '&:hover': {
-                        borderColor: '#00d4ff',
-                        color: '#00d4ff',
-                        background: 'rgba(0, 212, 255, 0.05)',
-                      },
-                    }}
-                  >
-                    Grafik
-                  </Button>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <IconButton 
+                      size="small" 
+                      onClick={() => toggleWatchlist(item.symbol)}
+                      sx={{ color: watchlist.includes(item.symbol) ? '#f59e0b' : 'text.secondary' }}
+                    >
+                      {watchlist.includes(item.symbol) ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
+                    </IconButton>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => handleOpenChart(item)}
+                      startIcon={<BarChart sx={{ fontSize: '1rem !important' }} />}
+                      sx={{
+                        fontSize: '0.7rem',
+                        py: 0.3,
+                        borderColor: 'rgba(255,255,255,0.1)',
+                        color: 'text.secondary',
+                        '&:hover': {
+                          borderColor: '#00d4ff',
+                          color: '#00d4ff',
+                          background: 'rgba(0, 212, 255, 0.05)',
+                        },
+                      }}
+                    >
+                      Grafik
+                    </Button>
+                  </Box>
                 </Box>
               </CardContent>
             </Card>
@@ -116,9 +148,24 @@ export default function MarketsPage() {
       </Grid>
 
       {/* All Markets Table */}
-      <Box sx={{ mb: 2 }}>
-        <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Tüm Yatırım Ürünleri</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>Piyasa fiyatları gerçek zamanlı güncellenmektedir</Typography>
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Tüm Yatırım Ürünleri</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Piyasa fiyatları gerçek zamanlı güncellenmektedir</Typography>
+        </Box>
+        <Chip 
+          label="Sadece Favoriler" 
+          icon={showWatchlistOnly ? <Star /> : <StarBorder />}
+          clickable
+          onClick={() => setShowWatchlistOnly(!showWatchlistOnly)}
+          sx={{
+            fontWeight: 600,
+            background: showWatchlistOnly ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255,255,255,0.05)',
+            color: showWatchlistOnly ? '#f59e0b' : 'text.secondary',
+            border: `1px solid ${showWatchlistOnly ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255,255,255,0.1)'}`,
+            '&:hover': { background: showWatchlistOnly ? 'rgba(245, 158, 11, 0.2)' : 'rgba(255,255,255,0.1)' }
+          }}
+        />
       </Box>
 
       <TableContainer
@@ -132,6 +179,7 @@ export default function MarketsPage() {
         <Table aria-label="Tüm yatırım ürünleri">
           <TableHead>
             <TableRow>
+              <TableCell width={50}></TableCell>
               <TableCell>Ürün</TableCell>
               <TableCell>Kategori</TableCell>
               <TableCell align="right">Fiyat</TableCell>
@@ -140,8 +188,17 @@ export default function MarketsPage() {
             </TableRow>
           </TableHead>
           <TableBody>
-            {markets.map((item) => (
+            {markets.filter(m => !showWatchlistOnly || watchlist.includes(m.symbol)).map((item) => (
               <TableRow key={item.symbol}>
+                <TableCell>
+                  <IconButton 
+                    size="small" 
+                    onClick={() => toggleWatchlist(item.symbol)}
+                    sx={{ color: watchlist.includes(item.symbol) ? '#f59e0b' : 'rgba(255,255,255,0.2)' }}
+                  >
+                    {watchlist.includes(item.symbol) ? <Star fontSize="small" /> : <StarBorder fontSize="small" />}
+                  </IconButton>
+                </TableCell>
                 <TableCell component="th" scope="row">
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
                   <Typography variant="caption" sx={{ color: 'text.secondary' }}>{item.name}</Typography>

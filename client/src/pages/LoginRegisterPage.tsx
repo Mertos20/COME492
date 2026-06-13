@@ -37,8 +37,10 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
   const normalizeUser = (raw: Partial<AuthUser>): AuthUser => ({
     id: raw.id || "",
     fullName: raw.fullName || "Kullanici",
+    email: raw.email || "",
     role: raw.role === "expert" ? "expert" : "user",
-    membership: raw.membership && plans.includes(raw.membership) ? raw.membership : "free"
+    membership: raw.membership && plans.includes(raw.membership) ? raw.membership : "free",
+    isAdmin: raw.isAdmin || false
   });
 
   const handleAuth = async (event: FormEvent) => {
@@ -456,6 +458,12 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                     <Chip label="USER" size="small" sx={{ background: 'rgba(0, 212, 255, 0.1)', color: '#00d4ff', fontWeight: 700, fontSize: '0.6rem', height: 20 }} />
                     <Typography variant="caption" sx={{ color: '#94a3b8', fontFamily: 'monospace' }}>
                       mert@example.com / 123456
+                    </Typography>
+                  </Box>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Chip label="ADMIN" size="small" sx={{ background: 'rgba(239, 68, 68, 0.1)', color: '#ef4444', fontWeight: 700, fontSize: '0.6rem', height: 20 }} />
+                    <Typography variant="caption" sx={{ color: '#94a3b8', fontFamily: 'monospace' }}>
+                      admin@portfol.io / admin123
                     </Typography>
                   </Box>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>

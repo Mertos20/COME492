@@ -1,10 +1,22 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { PortfolioSummary, MarketInstrument } from "../types";
-import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, ToggleButtonGroup, ToggleButton } from "@mui/material";
-import { TrendingUp, TrendingDown, AccountBalance, Assessment } from '@mui/icons-material';
+import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, ToggleButtonGroup, ToggleButton, Chip } from "@mui/material";
+import { TrendingUp, TrendingDown, AccountBalance, Assessment, LockOpen, Lock } from '@mui/icons-material';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+
+interface RealizedPnlData {
+  totalRealizedPnl: number;
+  totalRealizedCount: number;
+  bySymbol: {
+    symbol: string;
+    pnl: number;
+    totalSold: number;
+    tradeCount: number;
+    trades: { quantity: number; buyPrice: number; sellPrice: number; pnl: number; date: string }[];
+  }[];
+}
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -67,12 +79,17 @@ export default function PortfolioPage() {
   const [markets, setMarkets] = useState<MarketInstrument[]>([]);
   const [range, setRange] = useState<RangeKey>("1M");
   const [loading, setLoading] = useState(true);
+  const [realizedPnl, setRealizedPnl] = useState<RealizedPnlData | null>(null);
 
   useEffect(() => {
     const load = async () => {
       try {
-        const [p, m] = await Promise.all([api.get<PortfolioSummary>("/portfolio/summary"), api.get<MarketInstrument[]>("/markets/all")]);
-        setPortfolio(p.data); setMarkets(m.data);
+        const [p, m, r] = await Promise.all([
+          api.get<PortfolioSummary>("/portfolio/summary"),
+          api.get<MarketInstrument[]>("/markets/all"),
+          api.get<RealizedPnlData>("/portfolio/realized-pnl"),
+        ]);
+        setPortfolio(p.data); setMarkets(m.data); setRealizedPnl(r.data);
       } catch { console.error("Portföy yüklenemedi"); }
       finally { setLoading(false); }
     };
@@ -177,6 +194,101 @@ export default function PortfolioPage() {
           </ToggleButtonGroup>
         </Box>
       </Paper>
+
+      {/* Realized vs Unrealized PnL Section */}
+      <Box sx={{ mt: 4 }}>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Gerçekleşmiş vs Gerçekleşmemiş Kar/Zarar</Typography>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          {/* Unrealized PnL Card */}
+          <Grid item xs={12} md={6}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                height: '100%',
+                background: totalPnl >= 0
+                  ? 'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(16,185,129,0.02) 100%)'
+                  : 'linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 100%)',
+                border: `1px solid ${totalPnl >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Gerçekleşmemiş K/Z</Typography>
+                <Chip label="Açık Pozisyonlar" size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)' }} />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: totalPnl >= 0 ? 'success.main' : 'error.main' }}>
+                {totalPnl >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(totalPnl)}</Typography>
+                <Typography variant="body2" sx={{ opacity: 0.8 }}>({totalPnlPercent.toFixed(2)}%)</Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                Portföyünüzde bulunan ve henüz satılmamış varlıklardan kaynaklanan kağıt üzerindeki kar/zarar.
+              </Typography>
+            </Paper>
+          </Grid>
+
+          {/* Realized PnL Card */}
+          <Grid item xs={12} md={6}>
+            <Paper
+              elevation={0}
+              sx={{
+                p: 3,
+                height: '100%',
+                background: (realizedPnl?.totalRealizedPnl ?? 0) >= 0
+                  ? 'linear-gradient(135deg, rgba(16,185,129,0.06) 0%, rgba(16,185,129,0.02) 100%)'
+                  : 'linear-gradient(135deg, rgba(239,68,68,0.06) 0%, rgba(239,68,68,0.02) 100%)',
+                border: `1px solid ${(realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)'}`,
+              }}
+            >
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
+                <LockOpen sx={{ color: 'text.secondary', fontSize: 20 }} />
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Gerçekleşmiş K/Z</Typography>
+                <Chip label="Satılan Pozisyonlar" size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }} />
+              </Box>
+              <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: (realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? 'success.main' : 'error.main' }}>
+                {(realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0)}</Typography>
+              </Box>
+              <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
+                {realizedPnl?.totalRealizedCount ?? 0} satış işleminden elde edilen kesinleşmiş kar/zarar (FIFO yöntemi).
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+
+        {/* Realized trades per symbol */}
+        {realizedPnl && realizedPnl.bySymbol.length > 0 && (
+          <TableContainer component={Paper} elevation={0} sx={{ mb: 4 }}>
+            <Table size="small">
+              <TableHead>
+                <TableRow>
+                  <TableCell>Sembol</TableCell>
+                  <TableCell align="right">İşlem Sayısı</TableCell>
+                  <TableCell align="right">Toplam Satış</TableCell>
+                  <TableCell align="right">Gerçekleşmiş K/Z</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {realizedPnl.bySymbol.map(item => (
+                  <TableRow key={item.symbol}>
+                    <TableCell>
+                      <Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
+                    </TableCell>
+                    <TableCell align="right">{item.tradeCount}</TableCell>
+                    <TableCell align="right">{formatMoney(item.totalSold)}</TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body2" sx={{ fontWeight: 600, color: item.pnl >= 0 ? 'success.main' : 'error.main' }}>
+                        {item.pnl >= 0 ? '+' : ''}{formatMoney(item.pnl)}
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
     </Box>
   );
 }
