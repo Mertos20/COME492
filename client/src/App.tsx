@@ -21,6 +21,7 @@ import AdminPage from "./pages/AdminPage";
 import AnalysisPage from "./pages/AnalysisPage";
 import WatchlistPage from "./pages/WatchlistPage";
 import NotFoundPage from "./pages/NotFoundPage";
+import GamePage from "./pages/GamePage";
 
 const plans = ["free", "bronze", "silver", "gold"] as const;
 
@@ -190,7 +191,7 @@ function App() {
             {[
               "/markets", "/news", "/subscriptions", "/deposit", "/trading",
               "/portfolio", "/watchlist", "/transactions", "/admin", "/chat",
-              "/analysis", "/expert", "/load-balance", "/profile"
+              "/analysis", "/expert", "/load-balance", "/profile", "/game"
             ].map((p) => (
               <Route key={p} path={p} element={<Navigate to="/" replace />} />
             ))}
@@ -245,6 +246,10 @@ function App() {
                 <Route
                   path="/profile"
                   element={user?.isAdmin ? <Navigate to="/admin" /> : <ProfilePage user={user} onProfileUpdate={handleProfileUpdate} onMembershipCancel={handleMembershipCancel} />}
+                />
+                <Route
+                  path="/game"
+                  element={user?.role === "user" && !user.isAdmin ? <GamePage /> : <Navigate to="/" />}
                 />
                 <Route path="*" element={<Navigate to="/404" replace />} />
               </Routes>

@@ -26,6 +26,7 @@ import { getAllInstruments } from "./utils/marketData";
 import { processPendingOrders } from "./utils/orderEngine";
 import { processAlerts } from "./utils/alertEngine";
 import alertsRoutes from "./routes/alerts";
+import gameRoutes from "./routes/game";
 
 // Load .env from root directory
 dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
@@ -90,6 +91,7 @@ app.use("/api/news", newsRoutes);
 app.use("/api/admin", adminRoutes);
 app.use("/api/analysis", analysisRoutes);
 app.use("/api/alerts", alertsRoutes);
+app.use("/api/game", gameRoutes);
 
 io.use((socket, next) => {
   try {

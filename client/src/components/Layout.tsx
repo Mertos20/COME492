@@ -33,6 +33,7 @@ import {
   Star,
   DarkMode,
   LightMode,
+  SportsEsports,
 } from "@mui/icons-material";
 import NotificationBell from "./NotificationBell";
 import { useThemeMode } from "../contexts/ThemeContext";
@@ -91,6 +92,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           { path: "/trading", label: "Al/Sat", icon: <SwapHoriz /> },
           { path: "/chat", label: "Danışmanlar", icon: <People /> },
           { path: "/analysis", label: "Analiz & Raporlar", icon: <Assessment /> },
+          { path: "/game", label: "Borsa Kahini", icon: <SportsEsports /> },
         ]
       : user?.role === "expert" ? [
           { path: "/expert", label: "Uzman Paneli", icon: <AdminPanelSettings /> },

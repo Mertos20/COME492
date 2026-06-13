@@ -1,4 +1,4 @@
-import { useState, FormEvent } from "react";
+import { useState, FormEvent, useEffect } from "react";
 import type { AuthUser } from "../types";
 import { api, setApiToken } from "../api";
 import {
@@ -15,7 +15,7 @@ import {
   ToggleButton,
   Chip,
 } from "@mui/material";
-import { TrendingUp, Person, AdminPanelSettings, Email, Lock, Badge } from "@mui/icons-material";
+import { TrendingUp, Person, AdminPanelSettings, Email, Lock, Badge, SmartToy, AccessTime, ShowChart } from "@mui/icons-material";
 
 interface LoginRegisterPageProps {
   onAuthSuccess: (token: string, user: AuthUser, balance: number) => void;
@@ -31,8 +31,17 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
   const [forgotPasswordStep, setForgotPasswordStep] = useState(0); // 0: Normal, 1: Email, 2: Code
   const [resetData, setResetData] = useState({ email: "", code: "", newPassword: "" });
   const [simulationCode, setSimulationCode] = useState("");
+  const [wordIndex, setWordIndex] = useState(0);
 
   const plans = ["free", "bronze", "silver", "gold"] as const;
+  const dynamicWords = ["Platformu", "Asistanı", "Ekosistemi", "Rehberi"];
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setWordIndex((prev) => (prev + 1) % dynamicWords.length);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
 
   const normalizeUser = (raw: Partial<AuthUser>): AuthUser => ({
     id: raw.id || "",
@@ -128,6 +137,15 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
     }
   };
 
+  const inputStyles = {
+    '& .MuiOutlinedInput-root': {
+      transition: 'all 0.3s ease',
+      '&.Mui-focused': {
+        boxShadow: '0 0 15px rgba(0, 212, 255, 0.15)',
+      }
+    }
+  };
+
   return (
     <Box
       sx={{
@@ -196,13 +214,20 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
           >
             Geleceğin Yatırım
             <br />
-            <span style={{
-              background: 'linear-gradient(135deg, #00d4ff, #10b981)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-            }}>
-              Platformu
-            </span>
+            <Box component="span" sx={{ display: 'inline-block', minWidth: '220px' }}>
+              <span
+                key={wordIndex}
+                style={{
+                  background: 'linear-gradient(135deg, #00d4ff, #10b981)',
+                  WebkitBackgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  display: 'inline-block',
+                  animation: 'scaleIn 0.5s ease-out',
+                }}
+              >
+                {dynamicWords[wordIndex]}
+              </span>
+            </Box>
           </Typography>
 
           <Typography
@@ -220,11 +245,30 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
 
           <Box sx={{ display: 'flex', gap: 3 }}>
             {[
-              { label: 'Aktif Piyasa', value: '20+' },
-              { label: 'Canlı Veri', value: '7/24' },
-              { label: 'AI Danışman', value: 'Gemini' },
-            ].map((stat) => (
-              <Box key={stat.label}>
+              { label: 'Aktif Piyasa', value: '20+', icon: <ShowChart sx={{ color: '#00d4ff', fontSize: 24, mb: 1 }} /> },
+              { label: 'Canlı Veri', value: '7/24', icon: <AccessTime sx={{ color: '#10b981', fontSize: 24, mb: 1 }} /> },
+              { label: 'AI Danışman', value: '+portfol.ai', icon: <SmartToy sx={{ color: '#7c3aed', fontSize: 24, mb: 1 }} /> },
+            ].map((stat, i) => (
+              <Box
+                key={stat.label}
+                sx={{
+                  p: 2.5,
+                  minWidth: 110,
+                  borderRadius: '16px',
+                  background: 'rgba(255,255,255,0.02)',
+                  border: '1px solid rgba(255,255,255,0.05)',
+                  backdropFilter: 'blur(10px)',
+                  transition: 'all 0.3s ease',
+                  animation: `slideUp 0.5s ease-out ${0.4 + i * 0.1}s backwards`,
+                  '&:hover': {
+                    transform: 'translateY(-5px)',
+                    background: 'rgba(255,255,255,0.05)',
+                    borderColor: 'rgba(0, 212, 255, 0.3)',
+                    boxShadow: '0 10px 25px rgba(0, 212, 255, 0.1)',
+                  }
+                }}
+              >
+                {stat.icon}
                 <Typography
                   variant="h5"
                   sx={{
@@ -367,6 +411,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                         startAdornment: <Badge sx={{ mr: 1, color: 'text.secondary', fontSize: '1.2rem' }} />,
                       }
                     }}
+                  sx={inputStyles}
                   />
                 )}
                 <TextField
@@ -384,6 +429,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                       startAdornment: <Email sx={{ mr: 1, color: 'text.secondary', fontSize: '1.2rem' }} />,
                     }
                   }}
+                  sx={inputStyles}
                 />
                 <TextField
                   margin="normal"
@@ -401,6 +447,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                       startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.2rem' }} />,
                     }
                   }}
+                  sx={inputStyles}
                 />
 
                 {mode === 'login' && (
@@ -490,6 +537,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 value={resetData.email}
                 onChange={(e) => setResetData(prev => ({ ...prev, email: e.target.value }))}
                 InputProps={{ startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} /> }}
+                  sx={inputStyles}
               />
 
               {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
@@ -535,6 +583,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 value={resetData.code}
                 onChange={(e) => setResetData(prev => ({ ...prev, code: e.target.value }))}
                 inputProps={{ style: { textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700 } }}
+                  sx={inputStyles}
               />
               <TextField
                 margin="normal"
@@ -545,6 +594,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 value={resetData.newPassword}
                 onChange={(e) => setResetData(prev => ({ ...prev, newPassword: e.target.value }))}
                 InputProps={{ startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} /> }}
+                  sx={inputStyles}
               />
 
               {error && <Alert severity="error" sx={{ mt: 2 }}>{error}</Alert>}
