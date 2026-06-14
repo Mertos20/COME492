@@ -33,8 +33,35 @@ interface PerformancePoint { label: string; value: number; pnl: number; }
 const getSeriesLength = (r: RangeKey) => ({ "1D": 24, "1W": 7, "1M": 30, "1Y": 365 }[r]);
 
 const buildLabels = (length: number, range: RangeKey): string[] => {
-  if (range === "1D") return Array.from({ length }, (_v, i) => `${i}:00`);
-  if (range === "1W") return ["Pzt", "Sal", "Car", "Per", "Cum", "Cmt", "Paz"];
+  const today = new Date();
+  if (range === "1D") {
+    return Array.from({ length }, (_v, i) => {
+      const d = new Date(today);
+      d.setHours(today.getHours() - (length - 1 - i));
+      return `${d.getHours().toString().padStart(2, '0')}:00`;
+    });
+  }
+  if (range === "1W") {
+    return Array.from({ length }, (_v, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (length - 1 - i));
+      return d.toLocaleDateString("tr-TR", { weekday: "short", day: "numeric" });
+    });
+  }
+  if (range === "1M") {
+    return Array.from({ length }, (_v, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (length - 1 - i));
+      return d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" });
+    });
+  }
+  if (range === "1Y") {
+    return Array.from({ length }, (_v, i) => {
+      const d = new Date(today);
+      d.setDate(today.getDate() - (length - 1 - i));
+      return d.toLocaleDateString("tr-TR", { month: "short", year: "2-digit" });
+    });
+  }
   return Array.from({ length }, (_v, i) => `${i + 1}`);
 };
 

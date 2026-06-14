@@ -16,7 +16,15 @@ const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value);
 
 export default function ChartModal({ open, onClose, title, symbol, data, change30d, price }: ChartModalProps) {
-  const chartData = data.map((value, index) => ({ day: index + 1, price: value }));
+  const today = new Date();
+  const chartData = data.map((value, index) => {
+    const d = new Date(today);
+    d.setDate(today.getDate() - (data.length - 1 - index));
+    return {
+      day: d.toLocaleDateString("tr-TR", { day: "numeric", month: "short" }),
+      price: value,
+    };
+  });
   const isPositive = change30d >= 0;
   const minPrice = Math.min(...data);
   const maxPrice = Math.max(...data);
@@ -73,7 +81,7 @@ export default function ChartModal({ open, onClose, title, symbol, data, change3
             <Tooltip
               contentStyle={{ backgroundColor: 'rgba(17,22,56,0.95)', border: `1px solid ${strokeColor}40`, borderRadius: 12, color: '#e2e8f0' }}
               formatter={(value: number) => [formatMoney(value), "Fiyat"]}
-              labelFormatter={(label) => `Gün ${label}`} />
+              labelFormatter={(label) => label} />
             <Area type="monotone" dataKey="price" stroke={strokeColor} strokeWidth={2} fill="url(#chartGradient)" dot={false} activeDot={{ r: 5, fill: strokeColor, stroke: '#111638', strokeWidth: 2 }} />
           </AreaChart>
         </ResponsiveContainer>
