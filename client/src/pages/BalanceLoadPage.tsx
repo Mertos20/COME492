@@ -6,6 +6,7 @@ import { api } from '../api';
 import { AccountBalanceWallet, Lock, CheckCircle, VerifiedUser, AccountBalance } from '@mui/icons-material';
 import CheckoutModal from '../components/CheckoutModal';
 import { useTranslation } from 'react-i18next';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 interface BalanceLoadPageProps {
   onBalanceChange?: () => void;
@@ -28,6 +29,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
   const { t } = useTranslation();
+  const { formatMoney, convertPrice, currency } = useCurrency();
 
   const quickAmounts = [1000, 5000, 10000, 25000, 50000];
 
@@ -57,7 +59,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
     const val = parseFloat(amount);
-    enqueueSnackbar(t('wallet.success_deposit', { val: val.toLocaleString('tr-TR') }), { variant: 'success' });
+    enqueueSnackbar(t('wallet.success_deposit', { val: formatMoney(val, "TRY") }), { variant: 'success' });
     if (onBalanceChange) onBalanceChange();
     setTimeout(() => navigate('/portfolio'), 1500);
   };
@@ -176,7 +178,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                 {quickAmounts.map(a => (
                   <Chip 
                     key={a} 
-                    label={`₺${a.toLocaleString('tr-TR')}`} 
+                    label={formatMoney(a, "TRY")} 
                     clickable 
                     onClick={() => setAmount(String(a))}
                     sx={{
@@ -260,7 +262,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
               <Box sx={{ mb: 2, p: 2, borderRadius: '16px', background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px dashed rgba(255,255,255,0.1)' : '1px dashed rgba(0,0,0,0.1)' }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>{t('wallet.withdrawable_balance')}</Typography>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#10b981' }}>
-                  ₺{currentBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
+                  {formatMoney(currentBalance, "TRY")}
                 </Typography>
               </Box>
 

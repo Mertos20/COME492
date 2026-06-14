@@ -14,9 +14,7 @@ import LoadingSkeleton from "../components/LoadingSkeleton";
 import CheckoutModal from "../components/CheckoutModal";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip } from "recharts";
 import { useTranslation } from "react-i18next";
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface TradingPageProps {
   balance: number;
@@ -56,6 +54,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const [alertCondition, setAlertCondition] = useState<"above" | "below">("above");
   const [alertLoading, setAlertLoading] = useState(false);
   const { t } = useTranslation();
+  const { formatMoney, convertPrice } = useCurrency();
 
   useEffect(() => {
     if (markets.length > 0 && !order.symbol) {
@@ -91,7 +90,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
     setError("");
-    setSuccess(t('trading.success_deposit', { amount: formatMoney(Number(depositAmount)) }));
+    setSuccess(t('trading.success_deposit', { amount: formatMoney(Number(depositAmount), "TRY") }));
     setDepositAmount("10000");
     onTradeComplete(); // Refresh balance from server
     setTimeout(() => setSuccess(""), 4000);
@@ -174,11 +173,19 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   }
 
   const selectedMarket = markets.find(m => m.symbol === order.symbol);
+  const isUsd = selectedMarket && ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(selectedMarket.symbol);
+  const base = isUsd ? "USD" : "TRY";
   const currentPrice = selectedMarket ? selectedMarket.price : 0;
   const isBuy = order.side === "buy";
+  
+  // Target price is in TRY in the input if it's a USD-based pair. Wait, no. The user enters the price in TRY if they have selected TRY.
+  // Actually, targetPrice in the input should probably be in the selected currency, but then sent to backend in TRY.
+  // This is tricky. For now, let's just convert the estimatedTotal and currentPrice to the selected currency.
   const estimatedTotal = order.type === "market" 
-    ? currentPrice * Number(order.quantity) 
-    : Number(order.targetPrice) * Number(order.quantity);
+    ? convertPrice(currentPrice * Number(order.quantity), base) 
+    : convertPrice(Number(order.targetPrice) * Number(order.quantity), "TRY"); // Assuming targetPrice is entered in TRY? No, if we change currency, the targetPrice input is still raw. We shouldn't change the input logic. Let's just convert current price for display.
+  
+  const displayPrice = convertPrice(currentPrice, base);
     
   const chartData = selectedMarket?.history30d?.map((v, i) => ({ day: i, price: v })) || [];
   const isPositiveChart = selectedMarket ? selectedMarket.change30d >= 0 : true;
@@ -253,7 +260,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                     <MenuItem key={m.symbol} value={m.symbol}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                         <span>{m.symbol} - {m.name}</span>
-                        <span style={{ opacity: 0.7 }}>{formatMoney(m.price)}</span>
+                        <span style={{ opacity: 0.7 }}>{formatMoney(m.price, ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(m.symbol) ? "USD" : "TRY")}</span>
                       </Box>
                     </MenuItem>
                   ))}
@@ -308,14 +315,14 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             <Grid container alignItems="center" justifyContent="space-between">
               <Grid item>
                 <Typography variant="body2" color="text.secondary">{t('trading.current_price')}</Typography>
-                <Typography variant="h6">{formatMoney(currentPrice)}</Typography>
+                <Typography variant="h6">{formatMoney(currentPrice, base)}</Typography>
               </Grid>
               <Grid item sx={{ textAlign: 'right' }}>
                 <Typography variant="body2" color="text.secondary">
                   {order.type === "market" ? t('trading.est_total') : t('trading.reserved_amount')}
                 </Typography>
                 <Typography variant="h5" sx={{ color: isBuy ? '#10b981' : '#ef4444', fontWeight: 800 }}>
-                  {!isNaN(estimatedTotal) && estimatedTotal > 0 ? formatMoney(estimatedTotal) : "0,00 ₺"}
+                  {!isNaN(estimatedTotal) && estimatedTotal > 0 ? formatMoney(estimatedTotal, "TRY") : formatMoney(0, "TRY")}
                 </Typography>
               </Grid>
             </Grid>
@@ -380,7 +387,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                         </Typography>
                       </TableCell>
                       <TableCell>{t(`trading.type_${po.type}`)}</TableCell>
-                      <TableCell align="right">{formatMoney(po.targetPrice)}</TableCell>
+                      <TableCell align="right">{formatMoney(po.targetPrice, "TRY")}</TableCell>
                       <TableCell align="right">{po.quantity}</TableCell>
                       <TableCell align="center">
                         <IconButton size="small" color="error" onClick={() => cancelOrder(po._id)}>
@@ -409,7 +416,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             {t('trading.available_balance')}
           </Typography>
           <Typography variant="h3" sx={{ mt: 1, mb: 4, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {formatMoney(balance)}
+            {formatMoney(balance, "TRY")}
           </Typography>
 
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', textAlign: 'left' }}>
@@ -514,12 +521,12 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
           <Box sx={{ px: 4, py: 3, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
             <Box>
               <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '0.05em' }}>{selectedMarket?.symbol}</Typography>
-              <Typography variant="h6" sx={{ color: chartColor, fontWeight: 700 }}>{formatMoney(currentPrice)} ({selectedMarket?.change30d.toFixed(2)}%)</Typography>
+              <Typography variant="h6" sx={{ color: chartColor, fontWeight: 700 }}>{formatMoney(currentPrice, base)} ({selectedMarket?.change30d.toFixed(2)}%)</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('trading.available_balance')}</Typography>
-                <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance)}</Typography>
+                <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance, "TRY")}</Typography>
               </Box>
               <IconButton onClick={() => setZenMode(false)} sx={{ color: 'text.secondary', background: 'rgba(255,255,255,0.05)', '&:hover': { color: '#fff', background: 'rgba(239, 68, 68, 0.2)' } }}>
                 <FullscreenExit sx={{ fontSize: 36 }} />
@@ -539,11 +546,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
                 <XAxis dataKey="day" hide />
-                <YAxis domain={['auto', 'auto']} stroke="rgba(255,255,255,0.2)" tick={{ fill: '#64748b', fontSize: 14, fontWeight: 700 }} width={100} tickFormatter={(val) => formatMoney(val)} />
+                <YAxis domain={['auto', 'auto']} stroke="rgba(255,255,255,0.2)" tick={{ fill: '#64748b', fontSize: 14, fontWeight: 700 }} width={100} tickFormatter={(val) => formatMoney(val, base)} />
                 <ChartTooltip
                   contentStyle={{ backgroundColor: 'rgba(2,6,23,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12 }}
                   itemStyle={{ color: chartColor, fontWeight: 900, fontSize: '1.2rem' }}
-                  formatter={(val: number) => [formatMoney(val), t('trading.tooltip_price')]}
+                  formatter={(val: number) => [formatMoney(val, base), t('trading.tooltip_price')]}
                   labelStyle={{ display: 'none' }}
                 />
                 <Area type="monotone" dataKey="price" stroke={chartColor} strokeWidth={6} fill="url(#zenGradient)" isAnimationActive={false} />

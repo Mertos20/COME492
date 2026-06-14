@@ -43,7 +43,16 @@ router.post("/order", requireAuth, async (req: AuthRequest, res) => {
   }
 
   const priceToUse = orderType === "market" ? market.price : (targetPrice as number);
-  const total = Number((qty * priceToUse).toFixed(4));
+  let total = Number((qty * priceToUse).toFixed(4));
+
+  const usdBasedSymbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"];
+  if (usdBasedSymbols.includes(symbol)) {
+    const usdtryMarket = await getBySymbol("USDTRY");
+    if (usdtryMarket) {
+      total = Number((total * usdtryMarket.price).toFixed(4));
+    }
+  }
+
   const holding = user.holdings.find((item: IHolding) => item.symbol === symbol);
 
   if (orderType === "market") {
@@ -150,7 +159,15 @@ router.delete("/orders/:id", requireAuth, async (req: AuthRequest, res) => {
     return;
   }
 
-  const total = Number((order.quantity * (order.targetPrice || 0)).toFixed(4));
+  let total = Number((order.quantity * (order.targetPrice || 0)).toFixed(4));
+
+  const usdBasedSymbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"];
+  if (usdBasedSymbols.includes(order.symbol)) {
+    const usdtryMarket = await getBySymbol("USDTRY");
+    if (usdtryMarket) {
+      total = Number((total * usdtryMarket.price).toFixed(4));
+    }
+  }
 
   // Refund locked balances
   if (order.side === "buy") {

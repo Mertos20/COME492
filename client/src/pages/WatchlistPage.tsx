@@ -30,13 +30,7 @@ import ChartModal from "../components/ChartModal";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import { ResponsiveContainer, AreaChart, Area } from "recharts";
 import { useTranslation } from "react-i18next";
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", {
-    style: "currency",
-    currency: "TRY",
-    maximumFractionDigits: 2,
-  }).format(value);
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const categoryColors: Record<string, string> = {
   crypto: "#f59e0b",
@@ -82,6 +76,7 @@ export default function WatchlistPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChart, setSelectedChart] = useState<MarketInstrument | null>(null);
   const { t } = useTranslation();
+  const { formatMoney } = useCurrency();
 
   const categoryLabels: Record<string, string> = {
     crypto: t('watchlist.cat_crypto'),
@@ -275,7 +270,7 @@ export default function WatchlistPage() {
                         variant="body2"
                         sx={{ fontWeight: 700 }}
                       >
-                        {formatMoney(item.price)}
+                        {formatMoney(item.price, ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(item.symbol) ? "USD" : "TRY")}
                       </Typography>
                     </TableCell>
                     <TableCell align="right">

@@ -6,9 +6,7 @@ import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContain
 import { AccountBalanceWallet, ShowChart, Receipt, People, WorkspacePremium, AddCard, TrendingUp, TrendingDown, Radar } from '@mui/icons-material';
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useTranslation } from "react-i18next";
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const statGradients = [
   'linear-gradient(135deg, rgba(0, 212, 255, 0.12) 0%, rgba(0, 212, 255, 0.03) 100%)',
@@ -62,7 +60,7 @@ function StatCard({ title, value, pnl, pnlPercent, index }: { title: string, val
                     <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: isPositive ? 'success.main' : 'error.main', gap: 0.5 }}>
                         {isPositive ? <TrendingUp sx={{ fontSize: 18 }} /> : <TrendingDown sx={{ fontSize: 18 }} />}
                         <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem' }}>
-                            {pnl.toFixed(2)} TRY ({pnlPercent.toFixed(2)}%)
+                            {pnl.toFixed(2)} ({pnlPercent.toFixed(2)}%)
                         </Typography>
                     </Box>
                 )}
@@ -145,6 +143,7 @@ export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
   const { t } = useTranslation();
+  const { formatMoney } = useCurrency();
 
   useEffect(() => {
     const loadPortfolio = async () => {

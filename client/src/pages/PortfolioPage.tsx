@@ -6,6 +6,7 @@ import { TrendingUp, TrendingDown, AccountBalance, Assessment, LockOpen, Lock } 
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface RealizedPnlData {
   totalRealizedPnl: number;
@@ -18,9 +19,6 @@ interface RealizedPnlData {
     trades: { quantity: number; buyPrice: number; sellPrice: number; pnl: number; date: string }[];
   }[];
 }
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
 
 const toNumber = (value: unknown): number => {
   const n = typeof value === "number" ? value : Number(value);
@@ -86,18 +84,39 @@ const buildRangeSeriesFrom30d = (s: number[], range: RangeKey): number[] => {
   return [...Array.from({ length: 335 }, () => s[0] ?? 0), ...s];
 };
 
-const buildPerformanceSeries = (holdings: PortfolioSummary["holdings"], markets: MarketInstrument[], range: RangeKey): PerformancePoint[] => {
+const buildPerformanceSeries = (holdings: PortfolioSummary["holdings"], markets: MarketInstrument[], range: RangeKey, convertPrice: (v: number, base: "TRY" | "USD") => number): PerformancePoint[] => {
   const length = getSeriesLength(range);
   const labels = buildLabels(length, range);
   const marketMap = new Map(markets.map(m => [m.symbol, m]));
-  const invested = holdings.reduce((s, i) => s + (toNumber(i.quantity) * toNumber(i.avgBuyPrice)), 0);
+  
+  const isUsd = (sym: string) => ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(sym);
+
+  let invested = 0;
+  for (const h of holdings) {
+    invested += (toNumber(h.quantity) * convertPrice(toNumber(h.avgBuyPrice), isUsd(h.symbol) ? "USD" : "TRY"));
+  }
+
   if (holdings.length === 0) return labels.map(l => ({ label: l, value: 0, pnl: 0 }));
   const vs = Array.from({ length }, () => 0);
+  
+  // Note: For perfect historical chart we'd use historical USDTRY rates.
+  // Here we approximate historical values in the user's selected currency by converting using the current rate,
+  // or using the USDTRY historical array if available.
+  const usdtryMarket = marketMap.get("USDTRY");
+  const usdtryHistory = buildRangeSeriesFrom30d(get30DayPriceSeries(usdtryMarket, usdtryMarket?.price || 37), range);
+
   for (const h of holdings) {
     const q = toNumber(h.quantity);
     if (q <= 0) continue;
+    const isU = isUsd(h.symbol);
     const rs = buildRangeSeriesFrom30d(get30DayPriceSeries(marketMap.get(h.symbol), toNumber(h.currentPrice)), range);
-    for (let i = 0; i < length; i++) vs[i] += q * toNumber(rs[i]);
+    for (let i = 0; i < length; i++) {
+      let valInTry = rs[i];
+      if (isU) valInTry = rs[i] * (usdtryHistory[i] || usdtryMarket?.price || 37);
+      
+      // We convert from TRY to target currency using convertPrice, passing TRY as base
+      vs[i] += q * convertPrice(valInTry, "TRY");
+    }
   }
   return vs.map((v, i) => ({ label: labels[i], value: v, pnl: v - invested }));
 };
@@ -109,6 +128,7 @@ export default function PortfolioPage() {
   const [loading, setLoading] = useState(true);
   const [realizedPnl, setRealizedPnl] = useState<RealizedPnlData | null>(null);
   const { t } = useTranslation();
+  const { formatMoney, convertPrice } = useCurrency();
 
   useEffect(() => {
     const load = async () => {
@@ -128,9 +148,12 @@ export default function PortfolioPage() {
   if (loading) return <LoadingSkeleton type="dashboard" />;
   if (!portfolio) return <Alert severity="error">{t('portfolio.error_loading')}</Alert>;
 
-  const totalPnl = toNumber(portfolio.totalPnl), totalPnlPercent = toNumber(portfolio.totalPnlPercent);
-  const investmentValue = toNumber(portfolio.investmentValue), currentValue = toNumber(portfolio.currentValue), balance = toNumber(portfolio.balance);
-  const performanceSeries = buildPerformanceSeries(portfolio.holdings, markets, range);
+  const totalPnl = convertPrice(toNumber(portfolio.totalPnl), "TRY");
+  const totalPnlPercent = toNumber(portfolio.totalPnlPercent);
+  const investmentValue = convertPrice(toNumber(portfolio.investmentValue), "TRY");
+  const currentValue = convertPrice(toNumber(portfolio.currentValue), "TRY");
+  const balance = convertPrice(toNumber(portfolio.balance), "TRY");
+  const performanceSeries = buildPerformanceSeries(portfolio.holdings, markets, range, convertPrice);
 
   return (
     <Box>
@@ -177,15 +200,17 @@ export default function PortfolioPage() {
             </TableRow></TableHead>
             <TableBody>
               {portfolio.holdings.map(row => {
-                const tv = row.quantity * row.currentPrice;
+                const isUsd = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(row.symbol);
+                const base = isUsd ? "USD" : "TRY";
+                const tv = convertPrice(row.quantity * row.currentPrice, base);
                 const pp = row.avgBuyPrice > 0 ? ((row.currentPrice - row.avgBuyPrice) / row.avgBuyPrice) * 100 : 0;
                 return (<TableRow key={row.symbol}>
                   <TableCell><Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{row.symbol}</Typography></TableCell>
                   <TableCell align="right">{row.quantity}</TableCell>
-                  <TableCell align="right">{formatMoney(row.avgBuyPrice)}</TableCell>
-                  <TableCell align="right">{formatMoney(row.currentPrice)}</TableCell>
-                  <TableCell align="right">{formatMoney(tv)}</TableCell>
-                  <TableCell align="right"><Typography variant="body2" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{formatMoney(row.pnl)}</Typography></TableCell>
+                  <TableCell align="right">{formatMoney(row.avgBuyPrice, base)}</TableCell>
+                  <TableCell align="right">{formatMoney(row.currentPrice, base)}</TableCell>
+                  <TableCell align="right">{formatMoney(tv, "TRY")}</TableCell>
+                  <TableCell align="right"><Typography variant="body2" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{formatMoney(row.pnl, "TRY")}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="body2" sx={{ color: pp >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{pp.toFixed(2)}%</Typography></TableCell>
                 </TableRow>);
               })}
@@ -277,7 +302,7 @@ export default function PortfolioPage() {
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: (realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? 'success.main' : 'error.main' }}>
                 {(realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
-                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0)}</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0, "TRY")}</Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
                 {t('portfolio.realized_desc', { count: realizedPnl?.totalRealizedCount ?? 0 })}
@@ -305,10 +330,10 @@ export default function PortfolioPage() {
                       <Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
                     </TableCell>
                     <TableCell align="right">{item.tradeCount}</TableCell>
-                    <TableCell align="right">{formatMoney(item.totalSold)}</TableCell>
+                    <TableCell align="right">{formatMoney(item.totalSold, "TRY")}</TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" sx={{ fontWeight: 600, color: item.pnl >= 0 ? 'success.main' : 'error.main' }}>
-                        {item.pnl >= 0 ? '+' : ''}{formatMoney(item.pnl)}
+                        {item.pnl >= 0 ? '+' : ''}{formatMoney(item.pnl, "TRY")}
                       </Typography>
                     </TableCell>
                   </TableRow>

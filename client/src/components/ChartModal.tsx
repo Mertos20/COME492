@@ -3,6 +3,7 @@ import { Dialog, DialogTitle, DialogContent, DialogActions, Button, Box, Typogra
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { TrendingUp, TrendingDown } from "@mui/icons-material";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface ChartModalProps {
   open: boolean;
@@ -14,15 +15,14 @@ interface ChartModalProps {
   price: number;
 }
 
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY", maximumFractionDigits: 2 }).format(value);
-
 type RangeKey = "1D" | "1W" | "1M";
 
 export default function ChartModal({ open, onClose, title, symbol, data, change30d, price }: ChartModalProps) {
   const [range, setRange] = useState<RangeKey>("1M");
   const today = new Date();
   const { t } = useTranslation();
+  const { formatMoney, convertPrice } = useCurrency();
+  const base = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(symbol) ? "USD" : "TRY";
 
   let rangeData = data;
   if (range === "1M") rangeData = data;
@@ -78,9 +78,9 @@ export default function ChartModal({ open, onClose, title, symbol, data, change3
         </Box>
         <Box sx={{ display: "flex", gap: 3, mt: 2 }}>
           {[
-            { label: t('chart.current_price'), value: formatMoney(price), color: '#e2e8f0' },
+            { label: t('chart.current_price'), value: formatMoney(price, base), color: '#e2e8f0' },
             { label: range === '1D' ? t('chart.change_24h') : range === '1W' ? t('chart.change_7d') : t('chart.change_30d'), value: `${rangeChangePercent >= 0 ? '+' : ''}${rangeChangePercent.toFixed(2)}%`, color: strokeColor },
-            { label: t('chart.min_max'), value: `${formatMoney(minPrice)} — ${formatMoney(maxPrice)}`, color: '#94a3b8' },
+            { label: t('chart.min_max'), value: `${formatMoney(minPrice, base)} — ${formatMoney(maxPrice, base)}`, color: '#94a3b8' },
           ].map(s => (
             <Box key={s.label}>
               <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, fontSize: '0.65rem', textTransform: 'uppercase' }}>{s.label}</Typography>
@@ -111,11 +111,11 @@ export default function ChartModal({ open, onClose, title, symbol, data, change3
             </defs>
             <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
             <XAxis dataKey="day" stroke="rgba(255,255,255,0.06)" tick={{ fontSize: 12, fill: '#64748b' }} />
-            <YAxis stroke="rgba(255,255,255,0.06)" tick={{ fontSize: 12, fill: '#64748b' }} width={60} domain={["dataMin", "dataMax"]}
-              tickFormatter={(value) => `${(value / 1000).toFixed(1)}k`} />
+            <YAxis stroke="rgba(255,255,255,0.06)" tick={{ fontSize: 12, fill: '#64748b' }} width={80} domain={["dataMin", "dataMax"]}
+              tickFormatter={(value) => formatMoney(value, base)} />
             <Tooltip
               contentStyle={{ backgroundColor: 'rgba(17,22,56,0.95)', border: `1px solid ${strokeColor}40`, borderRadius: 12, color: '#e2e8f0' }}
-              formatter={(value: number) => [formatMoney(value), t('chart.tooltip_price')]}
+              formatter={(value: number) => [formatMoney(value, base), t('chart.tooltip_price')]}
               labelFormatter={(label) => label} />
             <Area type="monotone" dataKey="price" stroke={strokeColor} strokeWidth={2} fill="url(#chartGradient)" dot={false} activeDot={{ r: 5, fill: strokeColor, stroke: '#111638', strokeWidth: 2 }} />
           </AreaChart>

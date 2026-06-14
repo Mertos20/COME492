@@ -4,9 +4,7 @@ import type { TransactionItem } from "../types";
 import { FilterList, History } from "@mui/icons-material";
 import EmptyState from "../components/EmptyState";
 import { useTranslation } from "react-i18next";
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const formatDateTime = (value: string | null): string => {
   if (!value) return "-";
@@ -27,6 +25,7 @@ export default function TransactionHistoryPage() {
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
   const { t } = useTranslation();
+  const { formatMoney } = useCurrency();
 
   const loadTransactions = async () => {
     setLoading(true);
@@ -152,8 +151,8 @@ export default function TransactionHistoryPage() {
                     </TableCell>
                     <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4ff' }}>{tx.symbol || '-'}</Typography></TableCell>
                     <TableCell align="right">{tx.quantity || '-'}</TableCell>
-                    <TableCell align="right">{tx.price ? formatMoney(tx.price) : '-'}</TableCell>
-                    <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatMoney(tx.total)}</Typography></TableCell>
+                    <TableCell align="right">{tx.price ? formatMoney(tx.price, tx.symbol && ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(tx.symbol) ? "USD" : "TRY") : '-'}</TableCell>
+                    <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatMoney(tx.total, "TRY")}</Typography></TableCell>
                   </TableRow>
                 );
               })}

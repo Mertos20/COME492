@@ -12,6 +12,8 @@ import {
   useTheme,
   Tooltip,
   Chip,
+  Menu,
+  MenuItem,
 } from "@mui/material";
 import {
   Dashboard,
@@ -41,12 +43,10 @@ import {
 import NotificationBell from "./NotificationBell";
 import { useThemeMode } from "../contexts/ThemeContext";
 import { useMarket } from "../contexts/MarketContext";
+import { useCurrency } from "../contexts/CurrencyContext";
 import { useTranslation } from "react-i18next";
 
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
-    value
-  );
+
 
 const getPageInfo = (path: string, t: any) => {
   if (path === '/') return { title: t('nav.dashboard'), subtitle: t('nav.dashboard_sub') };
@@ -108,6 +108,8 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const { instruments } = useMarket();
   const [tickerIndex, setTickerIndex] = useState(0);
   const { t, i18n } = useTranslation();
+  const { currency, setCurrency, formatMoney } = useCurrency();
+  const [currencyAnchorEl, setCurrencyAnchorEl] = useState<null | HTMLElement>(null);
 
   const toggleLanguage = () => {
     i18n.changeLanguage(i18n.language.startsWith('en') ? 'tr' : 'en');
@@ -691,6 +693,47 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           >
             {i18n.language?.startsWith('en') ? 'EN' : 'TR'}
           </Button>
+
+          {user && (
+            <>
+              <Button
+                onClick={(e) => setCurrencyAnchorEl(e.currentTarget)}
+                sx={{
+                  minWidth: 40,
+                  p: '6px',
+                  color: 'text.secondary',
+                  fontWeight: 700,
+                  fontSize: '0.8rem',
+                  border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    borderColor: '#7c3aed',
+                    color: '#7c3aed',
+                    backgroundColor: 'rgba(124, 58, 237, 0.05)',
+                  },
+                }}
+              >
+                {currency === "TRY" ? "₺" : currency === "USD" ? "$" : "€"} {currency}
+              </Button>
+              <Menu
+                anchorEl={currencyAnchorEl}
+                open={Boolean(currencyAnchorEl)}
+                onClose={() => setCurrencyAnchorEl(null)}
+                PaperProps={{
+                  sx: {
+                    mt: 1,
+                    background: isDark ? 'rgba(15, 23, 42, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+                    backdropFilter: 'blur(10px)',
+                    border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+                  }
+                }}
+              >
+                <MenuItem onClick={() => { setCurrency("TRY"); setCurrencyAnchorEl(null); }}>₺ TRY</MenuItem>
+                <MenuItem onClick={() => { setCurrency("USD"); setCurrencyAnchorEl(null); }}>$ USD</MenuItem>
+                <MenuItem onClick={() => { setCurrency("EUR"); setCurrencyAnchorEl(null); }}>€ EUR</MenuItem>
+              </Menu>
+            </>
+          )}
               {user && <NotificationBell />}
               {!isMobile && user && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2, borderLeft: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>

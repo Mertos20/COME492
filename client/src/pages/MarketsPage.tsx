@@ -6,11 +6,9 @@ import { Grid, Card, CardContent, Typography, Button, Table, TableBody, TableCel
 import { TrendingUp, TrendingDown, BarChart, Star, StarBorder } from "@mui/icons-material";
 import ChartModal from "../components/ChartModal";
 
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value);
-
 import { useMarket } from "../contexts/MarketContext";
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 const categoryColors: Record<string, string> = {
   crypto: '#f59e0b',
@@ -27,6 +25,7 @@ export default function MarketsPage() {
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
   const { t } = useTranslation();
+  const { formatMoney } = useCurrency();
 
   useEffect(() => {
     const fetchWatchlist = async () => {
@@ -105,7 +104,7 @@ export default function MarketsPage() {
                   />
                 </Box>
                 <Typography variant="h5" sx={{ fontWeight: 800, mb: 1 }}>
-                  {formatMoney(item.price)}
+                  {formatMoney(item.price, ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(item.symbol) ? "USD" : "TRY")}
                 </Typography>
                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5, color: item.change30d >= 0 ? 'success.main' : 'error.main' }}>
@@ -219,7 +218,7 @@ export default function MarketsPage() {
                   />
                 </TableCell>
                 <TableCell align="right">
-                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatMoney(item.price)}</Typography>
+                  <Typography variant="body2" sx={{ fontWeight: 600 }}>{formatMoney(item.price, ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(item.symbol) ? "USD" : "TRY")}</Typography>
                 </TableCell>
                 <TableCell align="right">
                   <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 0.5, color: item.change30d >= 0 ? 'success.main' : 'error.main' }}>
