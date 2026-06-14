@@ -1,6 +1,23 @@
 import { Box, Typography, Button, Paper, Stack } from "@mui/material";
 import { useNavigate } from "react-router-dom";
-import { ArrowBack, Home, TrendingDown } from "@mui/icons-material";
+import { keyframes } from "@mui/system";
+import { ArrowBack, AccountBalanceWallet, TrendingDown } from "@mui/icons-material";
+
+// Grafiğin çakılma animasyonu: Yeşil (yükseliş) başlar, kırmızıya döner ve aşağı düşer
+const marketDropAnimation = keyframes`
+  0% { transform: translateY(0) rotate(0deg); color: #10b981; } 
+  15% { transform: translateY(-10px) rotate(-10deg); color: #10b981; } 
+  25% { transform: translateY(0) rotate(0deg); color: #ef4444; } 
+  70% { transform: translateY(50px) rotate(35deg); opacity: 0; color: #ef4444; }
+  100% { transform: translateY(50px) rotate(35deg); opacity: 0; color: #ef4444; }
+`;
+
+// 404 yazısı için hafif ve ciddi bir nabız/parlama efekti
+const subtlePulse = keyframes`
+  0% { text-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
+  50% { text-shadow: 0 0 30px rgba(0, 212, 255, 0.6); }
+  100% { text-shadow: 0 0 15px rgba(0, 212, 255, 0.2); }
+`;
 
 export default function NotFoundPage() {
   const navigate = useNavigate();
@@ -18,7 +35,7 @@ export default function NotFoundPage() {
         px: 2,
       }}
     >
-      {/* Arka plan ışıkları (login sayfasındaki orblara benzer) */}
+      {/* Arka plan ışıkları */}
       <div className="floating-orb floating-orb-1" />
       <div className="floating-orb floating-orb-2" />
 
@@ -33,50 +50,57 @@ export default function NotFoundPage() {
           border: '1px solid rgba(255, 255, 255, 0.08)',
           borderRadius: '24px',
           textAlign: 'center',
-          animation: 'scaleIn 0.5s ease-out',
+          animation: 'fadeIn 0.5s ease-out',
           position: 'relative',
           zIndex: 1,
         }}
       >
         <Box
           sx={{
-            width: 96,
-            height: 96,
+            width: 100,
+            height: 100,
             mx: 'auto',
             borderRadius: '24px',
-            background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.1) 0%, rgba(245, 158, 11, 0.1) 100%)',
-            border: '1px solid rgba(239, 68, 68, 0.2)',
+            background: 'rgba(15, 23, 42, 0.6)',
+            border: '1px solid rgba(255, 255, 255, 0.05)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
             mb: 3,
-            animation: 'pulse 3s infinite ease-in-out',
+            overflow: 'hidden', // Okun kutunun dışına taşmasını engeller
+            boxShadow: 'inset 0 4px 20px rgba(0,0,0,0.5)'
           }}
         >
-          <TrendingDown sx={{ fontSize: 48, color: '#ef4444' }} />
+          <TrendingDown 
+            sx={{ 
+              fontSize: 56, 
+              animation: `${marketDropAnimation} 3s infinite cubic-bezier(0.4, 0, 0.2, 1)` 
+            }} 
+          />
         </Box>
 
         <Typography
           variant="h1"
           sx={{
             fontWeight: 900,
-            fontSize: { xs: '4rem', md: '5rem' },
-            background: 'linear-gradient(135deg, #ef4444 0%, #f59e0b 100%)',
+            fontSize: { xs: '3.5rem', md: '4.5rem' },
+            background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
             mb: 1,
             lineHeight: 1,
+            animation: `${subtlePulse} 3s infinite ease-in-out`,
           }}
         >
           404
         </Typography>
 
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 2, color: '#e2e8f0' }}>
-          Kayıp Yatırım
+          Varlık Bulunamadı
         </Typography>
 
         <Typography variant="body1" sx={{ color: '#94a3b8', mb: 4, lineHeight: 1.6 }}>
-          Aradığınız sayfa değer kaybetmiş, piyasadan kaldırılmış veya hiç var olmamış olabilir. Portföyünüze güvenli bir şekilde geri dönün.
+          Erişmeye çalıştığınız sayfa piyasa dışı kalmış, taşınmış veya geçersiz bir bağlantı içeriyor olabilir. Lütfen güvenli alana geri dönün.
         </Typography>
 
         <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2} justifyContent="center">
@@ -103,7 +127,7 @@ export default function NotFoundPage() {
           </Button>
           <Button
             variant="contained"
-            startIcon={<Home />}
+            startIcon={<AccountBalanceWallet />}
             onClick={() => navigate("/")}
             sx={{
               py: 1.5,
@@ -120,7 +144,7 @@ export default function NotFoundPage() {
               transition: 'all 0.2s',
             }}
           >
-            Ana Sayfaya Dön
+            Portföye Dön
           </Button>
         </Stack>
       </Paper>
