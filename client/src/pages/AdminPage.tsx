@@ -60,6 +60,7 @@ import {
 } from 'recharts';
 import { useSnackbar } from 'notistack';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useTranslation } from 'react-i18next';
 
 interface AdminStats {
   totalUsers: number;
@@ -120,6 +121,7 @@ export default function AdminPage() {
     expertTier: 'bronze'
   });
 
+  const { t } = useTranslation();
   const { formatMoney, currency } = useCurrency();
   const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₺';
 
@@ -133,7 +135,7 @@ export default function AdminPage() {
       setStats(statsRes.data);
     } catch (err) {
       console.error(err);
-      enqueueSnackbar('Sistem bilgileri yüklenirken bir hata oluştu.', { variant: 'error' });
+      enqueueSnackbar(t('admin.error_fetch'), { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -160,7 +162,7 @@ export default function AdminPage() {
     if (!selectedUser) return;
     try {
       const res = await api.put<IUser>(`/admin/users/${selectedUser._id}`, editForm);
-      enqueueSnackbar('Kullanıcı başarıyla güncellendi.', { variant: 'success' });
+      enqueueSnackbar(t('admin.success_update'), { variant: 'success' });
       setEditOpen(false);
       
       // Update local state
@@ -169,21 +171,21 @@ export default function AdminPage() {
       api.get<AdminStats>('/admin/stats').then(statsRes => setStats(statsRes.data));
     } catch (err) {
       console.error(err);
-      enqueueSnackbar('Kullanıcı güncellenirken hata oluştu.', { variant: 'error' });
+      enqueueSnackbar(t('admin.error_update'), { variant: 'error' });
     }
   };
 
   const handleDeleteUser = async (userId: string) => {
-    if (window.confirm('Bu kullanıcıyı sistemden silmek istediğinize emin misiniz?')) {
+    if (window.confirm(t('admin.confirm_delete'))) {
       try {
         await api.delete(`/admin/users/${userId}`);
-        enqueueSnackbar('Kullanıcı silindi.', { variant: 'success' });
+        enqueueSnackbar(t('admin.success_delete'), { variant: 'success' });
         setUsers(users.filter(u => u._id !== userId));
         // Refresh stats
         api.get<AdminStats>('/admin/stats').then(statsRes => setStats(statsRes.data));
       } catch (err) {
         console.error(err);
-        enqueueSnackbar('Kullanıcı silinirken hata oluştu.', { variant: 'error' });
+        enqueueSnackbar(t('admin.error_delete'), { variant: 'error' });
       }
     }
   };
@@ -192,11 +194,11 @@ export default function AdminPage() {
     try {
       const res = await api.put(`/admin/users/${user._id}/freeze`);
       const isFrozen = res.data.isFrozen;
-      enqueueSnackbar(isFrozen ? 'Kullanıcı hesabı donduruldu.' : 'Kullanıcı hesabı aktifleştirildi.', { variant: 'success' });
+      enqueueSnackbar(isFrozen ? t('admin.success_freeze') : t('admin.success_unfreeze'), { variant: 'success' });
       setUsers(users.map(u => u._id === user._id ? { ...u, isFrozen } : u));
     } catch (err) {
       console.error(err);
-      enqueueSnackbar('İşlem sırasında hata oluştu.', { variant: 'error' });
+      enqueueSnackbar(t('admin.error_freeze'), { variant: 'error' });
     }
   };
 
@@ -218,7 +220,7 @@ export default function AdminPage() {
   if (loading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '80vh' }}>
-        <Typography variant="h5" sx={{ color: 'text.secondary' }}>Admin verileri yükleniyor...</Typography>
+        <Typography variant="h5" sx={{ color: 'text.secondary' }}>{t('admin.loading')}</Typography>
       </Box>
     );
   }
@@ -261,10 +263,10 @@ export default function AdminPage() {
           <Box>
             <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5, display: 'flex', alignItems: 'center', gap: 1.5 }}>
               <AdminPanelSettings sx={{ fontSize: 35, color: '#00d4ff' }} />
-              Admin Kontrol Paneli
+              {t('admin.title')}
             </Typography>
             <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-              Sistem-geneli varlık durumunu, aktif üyeleri izleyin ve kullanıcı hesaplarını modere edin.
+              {t('admin.subtitle')}
             </Typography>
           </Box>
         </Box>
@@ -290,7 +292,7 @@ export default function AdminPage() {
             </Box>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Toplam Kayıtlı Kullanıcı
+            {t('admin.total_users')}
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, mt: 1, color: 'text.primary' }}>
             {stats?.totalUsers}
@@ -317,7 +319,7 @@ export default function AdminPage() {
             </Box>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Toplam Sistem Bakiyesi
+            {t('admin.total_balance')}
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, mt: 1, color: 'text.primary' }}>
             {formatMoney(stats?.totalBalance || 0)}
@@ -344,7 +346,7 @@ export default function AdminPage() {
             </Box>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Aktif Sistem Uzmanları
+            {t('admin.active_experts')}
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, mt: 1, color: 'text.primary' }}>
             {stats?.expertCount}
@@ -371,7 +373,7 @@ export default function AdminPage() {
             </Box>
           </Box>
           <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-            Toplam İşlem / Hacim
+            {t('admin.total_tx_volume')}
           </Typography>
           <Typography variant="h4" sx={{ fontWeight: 800, mt: 1, color: 'text.primary' }}>
             {stats?.totalTransactions} <span style={{ fontSize: '1rem', fontWeight: 500, color: '#94a3b8' }}>/ {formatMoney(stats?.totalVolume || 0)}</span>
@@ -387,7 +389,7 @@ export default function AdminPage() {
           sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: 420 }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-            Kullanıcı Bakiyeleri (En Yüksek 15)
+            {t('admin.user_balances')}
           </Typography>
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -405,7 +407,7 @@ export default function AdminPage() {
                 contentStyle={{ background: '#111638', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                 labelStyle={{ color: '#ffffff', fontWeight: 700 }}
                 itemStyle={{ color: '#00d4ff' }}
-                formatter={(val: number) => [formatMoney(val), 'Bakiye']}
+                formatter={(val: number) => [formatMoney(val), t('admin.balance')]}
               />
               <Area type="monotone" dataKey="Bakiye" stroke="#00d4ff" strokeWidth={2} fillOpacity={1} fill="url(#colorBakiye)" />
             </AreaChart>
@@ -421,7 +423,7 @@ export default function AdminPage() {
           sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', height: 420, display: 'flex', flexDirection: 'column' }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-            Üyelik Dağılımı
+            {t('admin.membership_dist')}
           </Typography>
           <Box sx={{ flexGrow: 1, minHeight: 0, display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -459,7 +461,7 @@ export default function AdminPage() {
           sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px', display: 'flex', flexDirection: 'column', height: 380 }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 2, color: 'text.primary' }}>
-            Son 30 Günlük İşlem Hacmi (Tahmini)
+            {t('admin.volume_30d')}
           </Typography>
           <Box sx={{ flexGrow: 1, minHeight: 0 }}>
             <ResponsiveContainer width="100%" height="100%">
@@ -477,7 +479,7 @@ export default function AdminPage() {
                   contentStyle={{ background: '#111638', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                   labelStyle={{ color: '#ffffff', fontWeight: 700, marginBottom: '8px' }}
                   itemStyle={{ color: '#10b981' }}
-                  formatter={(val: number) => [formatMoney(val), 'Hacim']}
+                  formatter={(val: number) => [formatMoney(val), t('admin.volume')]}
                 />
                 <Bar dataKey="Hacim" fill="url(#colorHacim)" radius={[4, 4, 0, 0]} />
               </BarChart>
@@ -495,14 +497,14 @@ export default function AdminPage() {
         >
           <Box sx={{ display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', lg: 'center' }, gap: 2, mb: 3 }}>
             <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.primary' }}>
-              Kullanıcı Yönetimi ({filteredUsers.length} Listeleniyor)
+              {t('admin.user_management')} ({filteredUsers.length} {t('admin.listed')})
             </Typography>
             
             {/* SEARCH AND FILTERS TOOLBAR */}
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, alignItems: 'center', width: { xs: '100%', lg: 'auto' } }}>
               <TextField
                 size="small"
-                placeholder="İsim, Email veya Kullanıcı adı..."
+                placeholder={t('admin.search_placeholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 InputProps={{
@@ -527,11 +529,11 @@ export default function AdminPage() {
               />
 
               <FormControl size="small" sx={{ minWidth: '130px', flex: { xs: 1, sm: 'none' } }}>
-                <InputLabel id="role-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>Rol Filtresi</InputLabel>
+                <InputLabel id="role-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{t('admin.role_filter')}</InputLabel>
                 <Select
                   labelId="role-filter-label"
                   value={roleFilter}
-                  label="Rol Filtresi"
+                  label={t('admin.role_filter')}
                   onChange={(e) => setRoleFilter(e.target.value)}
                   sx={{
                     color: 'text.primary',
@@ -542,18 +544,18 @@ export default function AdminPage() {
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#00d4ff' }
                   }}
                 >
-                  <MenuItem value="all">Tümü</MenuItem>
+                  <MenuItem value="all">{t('admin.all')}</MenuItem>
                   <MenuItem value="user">User</MenuItem>
                   <MenuItem value="expert">Expert</MenuItem>
                 </Select>
               </FormControl>
 
               <FormControl size="small" sx={{ minWidth: '140px', flex: { xs: 1, sm: 'none' } }}>
-                <InputLabel id="membership-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>Üyelik Filtresi</InputLabel>
+                <InputLabel id="membership-filter-label" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>{t('admin.membership_filter')}</InputLabel>
                 <Select
                   labelId="membership-filter-label"
                   value={membershipFilter}
-                  label="Üyelik Filtresi"
+                  label={t('admin.membership_filter')}
                   onChange={(e) => setMembershipFilter(e.target.value)}
                   sx={{
                     color: 'text.primary',
@@ -564,7 +566,7 @@ export default function AdminPage() {
                     '&.Mui-focused .MuiOutlinedInput-notchedOutline': { borderColor: '#00d4ff' }
                   }}
                 >
-                  <MenuItem value="all">Tümü</MenuItem>
+                  <MenuItem value="all">{t('admin.all')}</MenuItem>
                   <MenuItem value="free">FREE</MenuItem>
                   <MenuItem value="bronze">BRONZE</MenuItem>
                   <MenuItem value="silver">SILVER</MenuItem>
@@ -579,19 +581,19 @@ export default function AdminPage() {
             <Table stickyHeader size="medium">
               <TableHead>
                 <TableRow>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>Kullanıcı</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>E-posta</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>Rol</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>Plan</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">Bakiye</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="center">İşlemler</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_user')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_email')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_role')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_plan')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">{t('admin.balance')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="center">{t('admin.table_actions')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {filteredUsers.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center" sx={{ color: 'text.secondary', py: 4 }}>
-                      Kriterlere uygun kullanıcı bulunamadı.
+                      {t('admin.no_users_found')}
                     </TableCell>
                   </TableRow>
                 ) : (
@@ -613,7 +615,7 @@ export default function AdminPage() {
                               {user.fullName}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                              @{user.username || 'username'} {user.isFrozen && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>(Donduruldu)</span>}
+                              @{user.username || 'username'} {user.isFrozen && <span style={{ color: '#ef4444', fontWeight: 'bold' }}>({t('admin.frozen')})</span>}
                             </Typography>
                           </Box>
                         </Box>
@@ -659,7 +661,7 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell align="center">
                         <Box sx={{ display: 'flex', justifyContent: 'center', gap: 1 }}>
-                          <MuiTooltip title="Kullanıcıyı Düzenle">
+                          <MuiTooltip title={t('admin.edit_user')}>
                             <IconButton
                               size="small"
                               onClick={() => handleEditClick(user)}
@@ -670,7 +672,7 @@ export default function AdminPage() {
                           </MuiTooltip>
                           {!user.isAdmin && (
                             <>
-                              <MuiTooltip title={user.isFrozen ? "Hesabı Aç (Unfreeze)" : "Hesabı Dondur (Freeze)"}>
+                              <MuiTooltip title={user.isFrozen ? t('admin.unfreeze_account') : t('admin.freeze_account')}>
                                 <IconButton
                                   size="small"
                                   onClick={() => handleToggleFreeze(user)}
@@ -679,7 +681,7 @@ export default function AdminPage() {
                                   {user.isFrozen ? <LockOpen sx={{ fontSize: 20 }} /> : <Lock sx={{ fontSize: 20 }} />}
                                 </IconButton>
                               </MuiTooltip>
-                              <MuiTooltip title="Kullanıcıyı Sil">
+                              <MuiTooltip title={t('admin.delete_user')}>
                                 <IconButton
                                   size="small"
                                   onClick={() => handleDeleteUser(user._id)}
@@ -709,19 +711,19 @@ export default function AdminPage() {
           sx={{ p: 3, background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)', borderRadius: '16px' }}
         >
           <Typography variant="h6" sx={{ fontWeight: 700, mb: 3, color: 'text.primary' }}>
-            Sistem İşlem Günlükleri (Son 15 Aktivite)
+            {t('admin.system_logs')}
           </Typography>
           <TableContainer>
             <Table size="medium">
               <TableHead>
                 <TableRow>
                   <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>Kullanıcı</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>İşlem Tipi</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>Varlık/Üyelik</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">Miktar</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">Birim Fiyat</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">Toplam Tutar</TableCell>
-                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">Tarih</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_tx_type')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }}>{t('admin.table_asset')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">{t('admin.table_amount')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">{t('admin.table_unit_price')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">{t('admin.table_total_amount')}</TableCell>
+                  <TableCell sx={{ background: '#111638 !important', color: 'text.secondary', fontWeight: 700 }} align="right">{t('admin.table_date')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
@@ -740,19 +742,19 @@ export default function AdminPage() {
                           </Box>
                         ) : (
                           <Typography variant="body2" sx={{ color: 'text.secondary', fontStyle: 'italic' }}>
-                            Silinmiş Kullanıcı
+                            {t('admin.deleted_user')}
                           </Typography>
                         )}
                       </TableCell>
                       <TableCell>
                         {tx.type === 'deposit' ? (
-                          <Chip label="DEPOZİT" size="small" sx={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }} />
+                          <Chip label={t('admin.tx_deposit')} size="small" sx={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981', border: '1px solid rgba(16, 185, 129, 0.3)', fontWeight: 600 }} />
                         ) : tx.type === 'upgrade' ? (
-                          <Chip label="ABONELİK" size="small" sx={{ background: 'rgba(124, 58, 237, 0.15)', color: '#7c3aed', border: '1px solid rgba(124, 58, 237, 0.3)', fontWeight: 600 }} />
+                          <Chip label={t('admin.tx_upgrade')} size="small" sx={{ background: 'rgba(124, 58, 237, 0.15)', color: '#7c3aed', border: '1px solid rgba(124, 58, 237, 0.3)', fontWeight: 600 }} />
                         ) : tx.type === 'buy' ? (
-                          <Chip label="ALIŞ" size="small" sx={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 600 }} />
+                          <Chip label={t('admin.tx_buy')} size="small" sx={{ background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid rgba(59, 130, 246, 0.3)', fontWeight: 600 }} />
                         ) : (
-                          <Chip label="SATIŞ" size="small" sx={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600 }} />
+                          <Chip label={t('admin.tx_sell')} size="small" sx={{ background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid rgba(239, 68, 68, 0.3)', fontWeight: 600 }} />
                         )}
                       </TableCell>
                       <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>{tx.symbol}</TableCell>
@@ -771,7 +773,7 @@ export default function AdminPage() {
                 ) : (
                   <TableRow>
                     <TableCell colSpan={7} align="center" sx={{ color: 'text.secondary', py: 4 }}>
-                      Sistemde henüz bir işlem kaydı bulunmuyor.
+                      {t('admin.no_tx_found')}
                     </TableCell>
                   </TableRow>
                 )}
@@ -796,7 +798,7 @@ export default function AdminPage() {
         }}
       >
         <DialogTitle sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', pb: 1 }}>
-          <Typography variant="h6" sx={{ fontWeight: 700 }}>Kullanıcı Düzenle</Typography>
+          <Typography variant="h6" sx={{ fontWeight: 700 }}>{t('admin.edit_user')}</Typography>
           <IconButton onClick={() => setEditOpen(false)} sx={{ color: 'text.secondary' }}>
             <Close />
           </IconButton>
@@ -807,7 +809,7 @@ export default function AdminPage() {
               <TextField
                 fullWidth
                 disabled
-                label="Ad Soyad"
+                label={t('admin.fullname')}
                 value={editForm.fullName}
                 onChange={(e) => setEditForm({ ...editForm, fullName: e.target.value })}
                 InputProps={{
@@ -834,7 +836,7 @@ export default function AdminPage() {
               <TextField
                 fullWidth
                 disabled
-                label="Kullanıcı Adı"
+                label={t('admin.username')}
                 value={editForm.username}
                 onChange={(e) => setEditForm({ ...editForm, username: e.target.value })}
                 sx={{
@@ -901,11 +903,11 @@ export default function AdminPage() {
 
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth>
-                <InputLabel id="edit-membership-label" sx={{ color: 'text.secondary' }}>Üyelik Planı</InputLabel>
+                <InputLabel id="edit-membership-label" sx={{ color: 'text.secondary' }}>{t('admin.membership_plan')}</InputLabel>
                 <Select
                   labelId="edit-membership-label"
                   value={editForm.membership}
-                  label="Üyelik Planı"
+                  label={t('admin.membership_plan')}
                   onChange={(e) => setEditForm({ ...editForm, membership: e.target.value })}
                   sx={{
                     color: '#ffffff',
@@ -925,11 +927,11 @@ export default function AdminPage() {
             {editForm.role === 'expert' && (
               <Grid item xs={12}>
                 <FormControl fullWidth>
-                  <InputLabel id="edit-expert-tier-label" sx={{ color: 'text.secondary' }}>Expert Seviyesi</InputLabel>
+                  <InputLabel id="edit-expert-tier-label" sx={{ color: 'text.secondary' }}>{t('admin.expert_tier')}</InputLabel>
                   <Select
                     labelId="edit-expert-tier-label"
                     value={editForm.expertTier}
-                    label="Expert Seviyesi"
+                    label={t('admin.expert_tier')}
                     onChange={(e) => setEditForm({ ...editForm, expertTier: e.target.value })}
                     sx={{
                       color: '#ffffff',
@@ -952,7 +954,7 @@ export default function AdminPage() {
             onClick={() => setEditOpen(false)}
             sx={{ color: 'text.secondary', fontWeight: 600 }}
           >
-            Vazgeç
+            {t('admin.cancel')}
           </Button>
           <Button
             onClick={handleEditSave}
@@ -965,7 +967,7 @@ export default function AdminPage() {
               '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' }
             }}
           >
-            Değişiklikleri Kaydet
+            {t('admin.save_changes')}
           </Button>
         </DialogActions>
       </Dialog>

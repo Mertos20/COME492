@@ -208,11 +208,10 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   // Target price is in TRY in the input if it's a USD-based pair. Wait, no. The user enters the price in TRY if they have selected TRY.
   // Actually, targetPrice in the input should probably be in the selected currency, but then sent to backend in TRY.
   // This is tricky. For now, let's just convert the estimatedTotal and currentPrice to the selected currency.
-  const estimatedTotal = order.type === "market" 
-    ? convertPrice(currentPrice * Number(order.quantity), base) 
-    : convertPrice(Number(order.targetPrice) * Number(order.quantity), "TRY"); // Assuming targetPrice is entered in TRY? No, if we change currency, the targetPrice input is still raw. We shouldn't change the input logic. Let's just convert current price for display.
-  
-  const displayPrice = convertPrice(currentPrice, base);
+  const estimatedTotalBase = order.type === "market" 
+    ? currentPrice * Number(order.quantity) 
+    : Number(order.targetPrice) * Number(order.quantity);
+
     
   const chartData = selectedMarket?.history30d?.map((v, i) => ({ day: i, price: v })) || [];
   const isPositiveChart = selectedMarket ? selectedMarket.change30d >= 0 : true;
@@ -324,11 +323,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 {!isBuy && order.symbol && (
                   <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1 }}>
                     <Typography variant="caption" sx={{ color: 'text.secondary' }}>
-                      {t('trading.available')} <Typography component="span" sx={{ fontWeight: 700, color: '#00d4ff' }}>{holdings.find(h => h.symbol === order.symbol)?.quantity || 0} {order.symbol}</Typography>
+                      {t('trading.available')} <Typography component="span" sx={{ fontWeight: 700, color: '#00d4ff' }}>{Number(holdings.find(h => h.symbol === order.symbol)?.quantity || 0).toFixed(3)} {order.symbol}</Typography>
                     </Typography>
                     <Button 
                       size="small" 
-                      onClick={() => setOrder({ ...order, quantity: (holdings.find(h => h.symbol === order.symbol)?.quantity || 0).toString() })}
+                      onClick={() => setOrder({ ...order, quantity: Number(holdings.find(h => h.symbol === order.symbol)?.quantity || 0).toFixed(3) })}
                       sx={{ fontSize: '0.65rem', minWidth: 'auto', p: '2px 8px' }}
                     >
                       MAX
@@ -365,7 +364,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   {order.type === "market" ? t('trading.est_total') : t('trading.reserved_amount')}
                 </Typography>
                 <Typography variant="h5" sx={{ color: isBuy ? '#10b981' : '#ef4444', fontWeight: 800 }}>
-                {estimatedTotalInTry > 0 ? formatMoney(estimatedTotalInTry) : formatMoney(0)}
+                  {estimatedTotalBase > 0 ? formatMoney(estimatedTotalBase, base) : formatMoney(0, base)}
                 </Typography>
               </Grid>
             </Grid>
