@@ -365,7 +365,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   {order.type === "market" ? t('trading.est_total') : t('trading.reserved_amount')}
                 </Typography>
                 <Typography variant="h5" sx={{ color: isBuy ? '#10b981' : '#ef4444', fontWeight: 800 }}>
-                  {!isNaN(estimatedTotal) && estimatedTotal > 0 ? formatMoney(estimatedTotal, "TRY") : formatMoney(0, "TRY")}
+                {estimatedTotalInTry > 0 ? formatMoney(estimatedTotalInTry) : formatMoney(0)}
                 </Typography>
               </Grid>
             </Grid>
@@ -430,7 +430,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                         </Typography>
                       </TableCell>
                       <TableCell>{t(`trading.type_${po.type}`)}</TableCell>
-                      <TableCell align="right">{formatMoney(po.targetPrice, "TRY")}</TableCell>
+                  <TableCell align="right">{formatMoney(po.targetPrice, ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(po.symbol) ? "USD" : "TRY")}</TableCell>
                       <TableCell align="right">{po.quantity}</TableCell>
                       <TableCell align="center">
                         <IconButton size="small" color="error" onClick={() => cancelOrder(po._id)}>
@@ -459,7 +459,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             {t('trading.available_balance')}
           </Typography>
           <Typography variant="h3" sx={{ mt: 1, mb: 4, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-            {formatMoney(balance, "TRY")}
+        {formatMoney(balance)}
           </Typography>
 
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', textAlign: 'left' }}>
@@ -569,7 +569,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Box sx={{ textAlign: 'right' }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('trading.available_balance')}</Typography>
-                <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance, "TRY")}</Typography>
+            <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance)}</Typography>
               </Box>
               <IconButton onClick={() => setZenMode(false)} sx={{ color: 'text.secondary', background: 'rgba(255,255,255,0.05)', '&:hover': { color: '#fff', background: 'rgba(239, 68, 68, 0.2)' } }}>
                 <FullscreenExit sx={{ fontSize: 36 }} />

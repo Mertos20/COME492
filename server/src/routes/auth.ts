@@ -11,9 +11,9 @@ const getSecret = (): string => process.env.JWT_SECRET || "dev_secret";
 
 const MEMBERSHIP_PRICES: Record<MembershipTier, number> = {
   free: 0,
-  bronze: 5,
-  silver: 10,
-  gold: 20
+  bronze: 500,
+  silver: 2000,
+  gold: 10000
 };
 
 const MEMBERSHIP_LEVELS: Record<MembershipTier, number> = {
@@ -143,9 +143,9 @@ router.get("/me", requireAuth, async (req: AuthRequest, res) => {
 router.get("/pricing", (_req, res) => {
   res.json({
     plans: [
-      { tier: "bronze", name: "BRONZE", price: 5, description: "Temel uzman konsultasyonu" },
-      { tier: "silver", name: "SILVER", price: 10, description: "Gelismis analiz ve danismanlik" },
-      { tier: "gold", name: "GOLD", price: 20, description: "Premium danismanlik ve ozel desteği" }
+      { tier: "bronze", name: "BRONZE", price: 500, description: "Temel uzman konsultasyonu" },
+      { tier: "silver", name: "SILVER", price: 2000, description: "Gelismis analiz ve danismanlik" },
+      { tier: "gold", name: "GOLD", price: 10000, description: "Premium danismanlik ve ozel desteği" }
     ]
   });
 });
@@ -400,4 +400,3 @@ router.post("/change-password", requireAuth, async (req: AuthRequest, res) => {
 });
 
 export default router;
-

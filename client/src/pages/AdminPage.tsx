@@ -59,6 +59,7 @@ import {
   Legend
 } from 'recharts';
 import { useSnackbar } from 'notistack';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 interface AdminStats {
   totalUsers: number;
@@ -96,9 +97,6 @@ const MEMBERSHIP_COLORS: Record<string, string> = {
   gold: '#ffd700',
 };
 
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
-
 export default function AdminPage() {
   const [users, setUsers] = useState<IUser[]>([]);
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -121,6 +119,9 @@ export default function AdminPage() {
     membership: 'free',
     expertTier: 'bronze'
   });
+
+  const { formatMoney, currency } = useCurrency();
+  const currencySymbol = currency === 'USD' ? '$' : currency === 'EUR' ? '€' : '₺';
 
   const fetchData = async () => {
     try {
@@ -399,7 +400,7 @@ export default function AdminPage() {
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
               <XAxis dataKey="name" stroke="#94a3b8" fontSize={11} />
-              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₺${val}`} />
+              <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `${currencySymbol}${val}`} />
               <ChartTooltip
                 contentStyle={{ background: '#111638', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                 labelStyle={{ color: '#ffffff', fontWeight: 700 }}
@@ -471,7 +472,7 @@ export default function AdminPage() {
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
                 <XAxis dataKey="date" stroke="#94a3b8" fontSize={11} tickMargin={10} minTickGap={30} />
-                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `₺${val >= 1000 ? val / 1000 + 'k' : val}`} />
+                <YAxis stroke="#94a3b8" fontSize={11} tickFormatter={(val) => `${currencySymbol}${val >= 1000 ? val / 1000 + 'k' : val}`} />
                 <ChartTooltip
                   contentStyle={{ background: '#111638', border: '1px solid rgba(255,255,255,0.1)', borderRadius: '12px' }}
                   labelStyle={{ color: '#ffffff', fontWeight: 700, marginBottom: '8px' }}
@@ -756,9 +757,11 @@ export default function AdminPage() {
                       </TableCell>
                       <TableCell sx={{ fontWeight: 700, color: 'text.primary' }}>{tx.symbol}</TableCell>
                       <TableCell align="right" sx={{ color: 'text.primary' }}>{tx.quantity}</TableCell>
-                      <TableCell align="right" sx={{ color: 'text.primary' }}>{formatMoney(tx.price)}</TableCell>
+                      <TableCell align="right" sx={{ color: 'text.primary' }}>
+                        {formatMoney(tx.price, tx.symbol && ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(tx.symbol) ? "USD" : "TRY")}
+                      </TableCell>
                       <TableCell align="right" sx={{ fontWeight: 700, color: tx.type === 'sell' || tx.type === 'deposit' ? '#10b981' : '#ef4444' }}>
-                        {tx.type === 'sell' || tx.type === 'deposit' ? '+' : '-'}{formatMoney(tx.total)}
+                        {tx.type === 'sell' || tx.type === 'deposit' ? '+' : '-'}{formatMoney(tx.total, "TRY")}
                       </TableCell>
                       <TableCell align="right" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                         {new Date(tx.createdAt).toLocaleString('tr-TR')}

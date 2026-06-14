@@ -148,11 +148,11 @@ export default function PortfolioPage() {
   if (loading) return <LoadingSkeleton type="dashboard" />;
   if (!portfolio) return <Alert severity="error">{t('portfolio.error_loading')}</Alert>;
 
-  const totalPnl = convertPrice(toNumber(portfolio.totalPnl), "TRY");
+  const totalPnl = toNumber(portfolio.totalPnl);
   const totalPnlPercent = toNumber(portfolio.totalPnlPercent);
-  const investmentValue = convertPrice(toNumber(portfolio.investmentValue), "TRY");
-  const currentValue = convertPrice(toNumber(portfolio.currentValue), "TRY");
-  const balance = convertPrice(toNumber(portfolio.balance), "TRY");
+  const investmentValue = toNumber(portfolio.investmentValue);
+  const currentValue = toNumber(portfolio.currentValue);
+  const balance = toNumber(portfolio.balance);
   const performanceSeries = buildPerformanceSeries(portfolio.holdings, markets, range, convertPrice);
 
   return (
@@ -202,15 +202,16 @@ export default function PortfolioPage() {
               {portfolio.holdings.map(row => {
                 const isUsd = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(row.symbol);
                 const base = isUsd ? "USD" : "TRY";
-                const tv = convertPrice(row.quantity * row.currentPrice, base);
+            const usdtry = markets.find(m => m.symbol === "USDTRY")?.price || 37;
+            const tvInTry = row.quantity * row.currentPrice * (isUsd ? usdtry : 1);
                 const pp = row.avgBuyPrice > 0 ? ((row.currentPrice - row.avgBuyPrice) / row.avgBuyPrice) * 100 : 0;
                 return (<TableRow key={row.symbol}>
                   <TableCell><Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{row.symbol}</Typography></TableCell>
                   <TableCell align="right">{row.quantity}</TableCell>
                   <TableCell align="right">{formatMoney(row.avgBuyPrice, base)}</TableCell>
                   <TableCell align="right">{formatMoney(row.currentPrice, base)}</TableCell>
-                  <TableCell align="right">{formatMoney(tv, "TRY")}</TableCell>
-                  <TableCell align="right"><Typography variant="body2" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{formatMoney(row.pnl, "TRY")}</Typography></TableCell>
+              <TableCell align="right">{formatMoney(tvInTry)}</TableCell>
+              <TableCell align="right"><Typography variant="body2" sx={{ color: row.pnl >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{formatMoney(row.pnl)}</Typography></TableCell>
                   <TableCell align="right"><Typography variant="body2" sx={{ color: pp >= 0 ? 'success.main' : 'error.main', fontWeight: 600 }}>{pp.toFixed(2)}%</Typography></TableCell>
                 </TableRow>);
               })}
@@ -302,7 +303,7 @@ export default function PortfolioPage() {
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: (realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? 'success.main' : 'error.main' }}>
                 {(realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
-                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0, "TRY")}</Typography>
+                <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0)}</Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
                 {t('portfolio.realized_desc', { count: realizedPnl?.totalRealizedCount ?? 0 })}
@@ -330,10 +331,10 @@ export default function PortfolioPage() {
                       <Typography variant="body2" sx={{ fontWeight: 700, color: '#00d4ff' }}>{item.symbol}</Typography>
                     </TableCell>
                     <TableCell align="right">{item.tradeCount}</TableCell>
-                    <TableCell align="right">{formatMoney(item.totalSold, "TRY")}</TableCell>
+                  <TableCell align="right">{formatMoney(item.totalSold)}</TableCell>
                     <TableCell align="right">
                       <Typography variant="body2" sx={{ fontWeight: 600, color: item.pnl >= 0 ? 'success.main' : 'error.main' }}>
-                        {item.pnl >= 0 ? '+' : ''}{formatMoney(item.pnl, "TRY")}
+                      {item.pnl >= 0 ? '+' : ''}{formatMoney(item.pnl)}
                       </Typography>
                     </TableCell>
                   </TableRow>

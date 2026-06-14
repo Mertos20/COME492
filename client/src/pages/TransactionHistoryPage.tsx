@@ -153,7 +153,7 @@ export default function TransactionHistoryPage() {
                     <TableCell><Typography variant="body2" sx={{ fontWeight: 600, color: '#00d4ff' }}>{tx.symbol || '-'}</Typography></TableCell>
                     <TableCell align="right">{tx.quantity || '-'}</TableCell>
                     <TableCell align="right">{tx.price ? formatMoney(tx.price, tx.symbol && ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"].includes(tx.symbol) ? "USD" : "TRY") : '-'}</TableCell>
-                    <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatMoney(tx.total, "TRY")}</Typography></TableCell>
+                    <TableCell align="right"><Typography variant="body2" sx={{ fontWeight: 700 }}>{formatMoney(tx.total)}</Typography></TableCell>
                   </TableRow>
                 );
               })}

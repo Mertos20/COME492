@@ -5,6 +5,7 @@ import type { AuthUser } from "../types";
 import { Container, Grid, Card, CardHeader, CardContent, CardActions, Typography, Button, CircularProgress, Alert, Box, List, ListItem, ListItemIcon, ListItemText, Chip } from "@mui/material";
 import { Check, Star, WorkspacePremium } from '@mui/icons-material';
 import { useTranslation } from "react-i18next";
+import { useCurrency } from "../contexts/CurrencyContext";
 
 interface PricingPlan { tier: string; name: string; price: number; description: string; }
 
@@ -14,9 +15,6 @@ interface SubscriptionPageProps {
   onUpgrade: (newMembership: AuthUser["membership"]) => void;
   onBalanceChange?: (newBalance: number) => void;
 }
-
-const formatMoney = (value: number): string =>
-  new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
 
 // Will use translation inside the component now
 // const planFeatures: Record<string, string[]> = { ... }
@@ -34,6 +32,7 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const { t } = useTranslation();
+  const { formatMoney } = useCurrency();
 
   useEffect(() => {
     const loadPlans = async () => {

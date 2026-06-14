@@ -72,7 +72,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
     const tryVal = getTryValue(parseFloat(amount));
-    enqueueSnackbar(t('wallet.success_deposit', { val: formatMoney(tryVal, "TRY") }), { variant: 'success' });
+    enqueueSnackbar(t('wallet.success_deposit', { val: formatMoney(tryVal) }), { variant: 'success' });
     if (onBalanceChange) onBalanceChange();
     setTimeout(() => navigate('/portfolio'), 1500);
   };
@@ -280,7 +280,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
               <Box sx={{ mb: 2, p: 2, borderRadius: '16px', background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px dashed rgba(255,255,255,0.1)' : '1px dashed rgba(0,0,0,0.1)' }}>
                 <Typography variant="body2" color="text.secondary" gutterBottom>{t('wallet.withdrawable_balance')}</Typography>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#10b981' }}>
-                  {formatMoney(currentBalance, "TRY")}
+                {formatMoney(currentBalance)}
                 </Typography>
               </Box>
 
