@@ -185,19 +185,23 @@ function App() {
       <Routes>
         <Route path="/404" element={<NotFoundPage />} />
         {!token ? (
-          <>
-            <Route path="/" element={<LoginRegisterPage onAuthSuccess={handleAuthSuccess} />} />
-            {/* Giriş yapılmadığında bilinen sayfalara erişilirse Ana Sayfaya (Login) yönlendir */}
-            {[
-              "/markets", "/news", "/subscriptions", "/deposit", "/trading",
-              "/portfolio", "/watchlist", "/transactions", "/admin", "/chat",
-              "/analysis", "/expert", "/load-balance", "/profile", "/game"
-            ].map((p) => (
-              <Route key={p} path={p} element={<Navigate to="/" replace />} />
-            ))}
-            {/* Bilinmeyen tüm URL'lerde 404'ü göster */}
-            <Route path="*" element={<Navigate to="/404" replace />} />
-          </>
+          <Route path="/*" element={
+            <Layout user={null} balance={0} onLogout={() => {}}>
+              <Routes>
+                <Route path="/" element={<LoginRegisterPage onAuthSuccess={handleAuthSuccess} />} />
+                {/* Giriş yapılmadığında bilinen sayfalara erişilirse Ana Sayfaya (Login) yönlendir */}
+                {[
+                  "/markets", "/news", "/subscriptions", "/deposit", "/trading",
+                  "/portfolio", "/watchlist", "/transactions", "/admin", "/chat",
+                  "/analysis", "/expert", "/load-balance", "/profile", "/game"
+                ].map((p) => (
+                  <Route key={p} path={p} element={<Navigate to="/" replace />} />
+                ))}
+                {/* Bilinmeyen tüm URL'lerde 404'ü göster */}
+                <Route path="*" element={<Navigate to="/404" replace />} />
+              </Routes>
+            </Layout>
+          } />
         ) : (
           <Route path="/*" element={
             <Layout user={user} balance={balance} onLogout={handleLogout}>

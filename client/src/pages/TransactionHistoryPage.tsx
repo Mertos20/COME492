@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { TransactionItem } from "../types";
-import { Paper, Typography, Grid, TextField, Button, CircularProgress, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Alert, Select, MenuItem, FormControl, InputLabel, Chip, Box, Pagination } from "@mui/material";
 import { FilterList, History } from "@mui/icons-material";
 import EmptyState from "../components/EmptyState";
+import { useTranslation } from "react-i18next";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -26,6 +26,7 @@ export default function TransactionHistoryPage() {
   const [filters, setFilters] = useState({ type: "all", symbol: "", from: "", to: "" });
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const { t } = useTranslation();
 
   const loadTransactions = async () => {
     setLoading(true);
@@ -41,7 +42,7 @@ export default function TransactionHistoryPage() {
       const response = await api.get<{transactions: TransactionItem[], pagination: {totalPages: number}}>(`/transactions/history${query ? `?${query}` : ""}`);
       setTransactions(response.data.transactions);
       setTotalPages(response.data.pagination.totalPages);
-    } catch { console.error("İşlemler yüklenemedi"); }
+    } catch { console.error(t('transactions.error_fetch')); }
     finally { setLoading(false); }
   };
 
@@ -56,38 +57,38 @@ export default function TransactionHistoryPage() {
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 0.5 }}>
         <History sx={{ color: '#00d4ff', fontSize: 28 }} />
-        <Typography variant="h4" sx={{ fontWeight: 800 }}>İşlem Geçmişi</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('transactions.title')}</Typography>
       </Box>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>Tüm alış, satış ve bakiye işlemlerinizi görüntüleyin</Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('transactions.subtitle')}</Typography>
 
       {/* Filters */}
       <Paper elevation={0} sx={{ p: 2.5, mb: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
           <FilterList sx={{ color: 'text.secondary', fontSize: 18 }} />
-          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Filtreler</Typography>
+          <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('transactions.filters')}</Typography>
         </Box>
         <Grid container spacing={2}>
           <Grid item xs={12} sm={6} md={3}>
             <FormControl fullWidth size="small">
-              <InputLabel>İşlem Tipi</InputLabel>
-              <Select size="small" value={filters.type} label="İşlem Tipi" onChange={(e) => handleFilterChange("type", e.target.value as string)}>
-                <MenuItem value="all">Tüm İşlemler</MenuItem>
-                <MenuItem value="deposit">Yüklemeler</MenuItem>
-                <MenuItem value="buy">Alış</MenuItem>
-                <MenuItem value="sell">Satış</MenuItem>
-                <MenuItem value="upgrade">Üyelik Yükseltme</MenuItem>
+              <InputLabel>{t('transactions.type_label')}</InputLabel>
+              <Select size="small" value={filters.type} label={t('transactions.type_label')} onChange={(e) => handleFilterChange("type", e.target.value as string)}>
+                <MenuItem value="all">{t('transactions.type_all')}</MenuItem>
+                <MenuItem value="deposit">{t('transactions.type_deposit')}</MenuItem>
+                <MenuItem value="buy">{t('transactions.type_buy')}</MenuItem>
+                <MenuItem value="sell">{t('transactions.type_sell')}</MenuItem>
+                <MenuItem value="upgrade">{t('transactions.type_upgrade')}</MenuItem>
               </Select>
             </FormControl>
           </Grid>
           <Grid item xs={12} sm={6} md={3}>
-            <TextField fullWidth size="small" label="Sembol (Örn: BTC)" value={filters.symbol} onChange={(e) => handleFilterChange("symbol", e.target.value)} />
+            <TextField fullWidth size="small" label={t('transactions.symbol_placeholder')} value={filters.symbol} onChange={(e) => handleFilterChange("symbol", e.target.value)} />
           </Grid>
           <Grid item xs={12} sm={6} md={2}>
             <TextField
               fullWidth
               type="date"
               size="small"
-              label="Başlangıç Tarihi"
+              label={t('transactions.start_date')}
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: { style: { fontFamily: 'inherit', color: 'inherit' } }
@@ -101,7 +102,7 @@ export default function TransactionHistoryPage() {
               fullWidth
               type="date"
               size="small"
-              label="Bitiş Tarihi"
+              label={t('transactions.end_date')}
               slotProps={{
                 inputLabel: { shrink: true },
                 htmlInput: { style: { fontFamily: 'inherit', color: 'inherit' } }
@@ -113,7 +114,7 @@ export default function TransactionHistoryPage() {
           <Grid item xs={12} sm={12} md={2}>
             <Button fullWidth variant="contained" onClick={loadTransactions} disabled={loading}
               sx={{ height: '40px', background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)', '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' } }}>
-              {loading ? <CircularProgress size={20} /> : "Filtrele"}
+              {loading ? <CircularProgress size={20} /> : t('transactions.btn_filter')}
             </Button>
           </Grid>
         </Grid>
@@ -124,8 +125,8 @@ export default function TransactionHistoryPage() {
         <Box sx={{ display: 'flex', justifyContent: 'center', py: 6 }}><CircularProgress /></Box>
       ) : !loading && transactions.length === 0 ? (
         <EmptyState 
-          title="İşlem Bulunamadı" 
-          description="Filtrelerinize uygun herhangi bir işlem kaydı bulunamadı."
+          title={t('transactions.empty_title')} 
+          description={t('transactions.empty_desc')}
           icon="search"
         />
       ) : (
@@ -136,8 +137,8 @@ export default function TransactionHistoryPage() {
           <Table>
             <TableHead>
               <TableRow>
-                <TableCell>Tarih</TableCell><TableCell>Tip</TableCell><TableCell>Sembol</TableCell>
-                <TableCell align="right">Miktar</TableCell><TableCell align="right">Fiyat</TableCell><TableCell align="right">Toplam</TableCell>
+                <TableCell>{t('transactions.table_date')}</TableCell><TableCell>{t('transactions.table_type')}</TableCell><TableCell>{t('transactions.table_symbol')}</TableCell>
+                <TableCell align="right">{t('transactions.table_amount')}</TableCell><TableCell align="right">{t('transactions.table_price')}</TableCell><TableCell align="right">{t('transactions.table_total')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>

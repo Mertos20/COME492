@@ -35,8 +35,8 @@ import {
   AutoAwesome,
   EventAvailable,
   Star,
-  CheckCircle,
 } from "@mui/icons-material";
+import { useTranslation, Trans } from "react-i18next";
 
 interface ReportsResponse {
   membership: AuthUser["membership"];
@@ -101,6 +101,7 @@ export default function AnalysisPage() {
   const [loading, setLoading] = useState(true);
   const [data, setData] = useState<ReportsResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   // Strategy Builder State (Gold Only)
   const [budget, setBudget] = useState("");
@@ -116,7 +117,7 @@ export default function AnalysisPage() {
         const res = await api.get<ReportsResponse>("/analysis/reports");
         setData(res.data);
       } catch (err) {
-        setError("Analiz ve raporlar yüklenirken bir hata oluştu.");
+        setError(t('analysis.error_load'));
       } finally {
         setLoading(false);
       }
@@ -138,7 +139,7 @@ export default function AnalysisPage() {
       });
       setStrategyResult(res.data.strategy);
     } catch (err: any) {
-      setGenError(err.response?.data?.message || "Strateji oluşturulurken bir hata oluştu.");
+      setGenError(err.response?.data?.message || t('analysis.error_strategy'));
     } finally {
       setGenerating(false);
     }
@@ -153,7 +154,7 @@ export default function AnalysisPage() {
   }
 
   if (error || !data) {
-    return <Alert severity="error">{error || "Veriler yüklenemedi."}</Alert>;
+    return <Alert severity="error">{error || t('analysis.error_data')}</Alert>;
   }
 
   const membership = data.membership;
@@ -198,10 +199,12 @@ export default function AnalysisPage() {
         <Lock sx={{ color: "#ffd700", fontSize: 24 }} />
       </Box>
       <Typography variant="subtitle1" sx={{ fontWeight: 800, color: "#fff", mb: 0.5 }}>
-        Bu Kısım Kilitli
+        {t('analysis.locked_title')}
       </Typography>
       <Typography variant="caption" sx={{ color: "text.secondary", mb: 2, maxWidth: 260 }}>
-        Bu analiz ve raporlara erişmek için en az <strong>{requiredTier.toUpperCase()}</strong> üyeliğe sahip olmalısınız.
+        <Trans i18nKey="analysis.locked_desc" values={{ requiredTier: requiredTier.toUpperCase() }}>
+          Bu analiz ve raporlara erişmek için en az <strong>{{requiredTier}}</strong> üyeliğe sahip olmalısınız.
+        </Trans>
       </Typography>
       <Button
         variant="contained"
@@ -215,7 +218,7 @@ export default function AnalysisPage() {
           fontSize: "0.75rem",
         }}
       >
-        Üyeliğini Yükselt
+        {t('analysis.btn_upgrade')}
       </Button>
     </Box>
   );
@@ -237,15 +240,15 @@ export default function AnalysisPage() {
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
           <Assessment sx={{ color: "#7c3aed", fontSize: 32 }} />
           <Typography variant="h4" sx={{ fontWeight: 800 }}>
-            Premium Analiz & Raporlar
+            {t('analysis.title')}
           </Typography>
         </Box>
         <Typography variant="body2" sx={{ color: "text.secondary", maxWidth: 650 }}>
-          Yatırım kararlarınızı güçlendirecek, üyeliğinize özel piyasa analizleri, teknik sinyaller ve uzman raporları.
+          {t('analysis.subtitle')}
         </Typography>
         <Chip
           icon={<WorkspacePremium sx={{ color: "#ffd700 !important" }} />}
-          label={`Mevcut Üyelik Seviyeniz: ${membership.toUpperCase()}`}
+          label={t('analysis.current_membership', { membership: membership.toUpperCase() })}
           sx={{
             position: "absolute",
             top: 24,
@@ -276,7 +279,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#cd7f32", display: "flex", alignItems: "center", gap: 1 }}>
-                  <CalendarToday /> Haftalık Rapor
+                  <CalendarToday /> {t('analysis.weekly_report')}
                 </Typography>
                 <Chip label="BRONZE" size="small" sx={{ background: "#cd7f32", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -294,7 +297,7 @@ export default function AnalysisPage() {
                   </Typography>
                   <Divider sx={{ my: 1.5, borderColor: "rgba(255,255,255,0.06)" }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, fontSize: "0.8rem", color: "#cd7f32" }}>
-                    Öne Çıkan Başlıklar:
+                    {t('analysis.highlights')}
                   </Typography>
                   {data.weeklyReport.highlights.map((h, i) => (
                     <Typography key={i} variant="body2" sx={{ color: "text.secondary", mb: 0.5, display: "flex", gap: 1 }}>
@@ -324,7 +327,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#cd7f32", display: "flex", alignItems: "center", gap: 1 }}>
-                  <BarChart /> Basit Teknik Sinyaller
+                  <BarChart /> {t('analysis.basic_signals')}
                 </Typography>
                 <Chip label="BRONZE" size="small" sx={{ background: "#cd7f32", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -334,10 +337,10 @@ export default function AnalysisPage() {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700 }}>Sembol</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Sinyal</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Güç</TableCell>
-                        <TableCell sx={{ fontWeight: 700 }}>Gösterge</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{t('analysis.table_symbol')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{t('analysis.table_signal')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{t('analysis.table_strength')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700 }}>{t('analysis.table_indicator')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -386,7 +389,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#c0c0c0", display: "flex", alignItems: "center", gap: 1 }}>
-                  <CalendarToday /> Günlük Piyasa Bülteni
+                  <CalendarToday /> {t('analysis.daily_bulletin')}
                 </Typography>
                 <Chip label="SILVER" size="small" sx={{ background: "#c0c0c0", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -404,7 +407,7 @@ export default function AnalysisPage() {
                   </Typography>
                   <Divider sx={{ my: 1.5, borderColor: "rgba(255,255,255,0.06)" }} />
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, fontSize: "0.8rem", color: "#c0c0c0" }}>
-                    Günlük Gelişmeler:
+                    {t('analysis.daily_developments')}
                   </Typography>
                   {data.dailyReport.bullets.map((b, i) => (
                     <Typography key={i} variant="body2" sx={{ color: "text.secondary", mb: 0.5, display: "flex", gap: 1 }}>
@@ -434,7 +437,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#c0c0c0", display: "flex", alignItems: "center", gap: 1 }}>
-                  <BarChart /> Detaylı Teknik Analiz
+                  <BarChart /> {t('analysis.detailed_analysis')}
                 </Typography>
                 <Chip label="SILVER" size="small" sx={{ background: "#c0c0c0", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -444,11 +447,11 @@ export default function AnalysisPage() {
                   <Table size="small">
                     <TableHead>
                       <TableRow>
-                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>Sembol</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>Destek / Direnç</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>RSI</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>MACD</TableCell>
-                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>Sinyal</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>{t('analysis.table_symbol')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>{t('analysis.table_support_resistance')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>{t('analysis.table_rsi')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>{t('analysis.table_macd')}</TableCell>
+                        <TableCell sx={{ fontWeight: 700, fontSize: "0.75rem" }}>{t('analysis.table_signal')}</TableCell>
                       </TableRow>
                     </TableHead>
                     <TableBody>
@@ -498,7 +501,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#c0c0c0", display: "flex", alignItems: "center", gap: 1 }}>
-                  <Lightbulb /> Model Portföy Özel Tavsiyeleri
+                  <Lightbulb /> {t('analysis.special_recommendations')}
                 </Typography>
                 <Chip label="SILVER" size="small" sx={{ background: "#c0c0c0", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -541,7 +544,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#ffd700", display: "flex", alignItems: "center", gap: 1 }}>
-                  <Star /> Kurumsal Analiz ve Korelasyonlar
+                  <Star /> {t('analysis.institutional_analysis')}
                 </Typography>
                 <Chip label="GOLD" size="small" sx={{ background: "#ffd700", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -549,14 +552,14 @@ export default function AnalysisPage() {
               {isGoldUnlocked && data.comprehensiveAnalysis ? (
                 <Box>
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#ffd700" }}>
-                    Sipariş Akışı (Order Flow):
+                    {t('analysis.order_flow')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "text.primary", mb: 2, lineHeight: 1.6 }}>
                     {data.comprehensiveAnalysis.orderFlow}
                   </Typography>
 
                   <Typography variant="subtitle2" sx={{ fontWeight: 700, mb: 1, color: "#ffd700" }}>
-                    Piyasa Korelasyon Katsayıları (30G):
+                    {t('analysis.correlations')}
                   </Typography>
                   {data.comprehensiveAnalysis.correlations.map((c, i) => (
                     <Box key={i} sx={{ display: "flex", justifyContent: "space-between", py: 0.5, borderBottom: "1px solid rgba(255,255,255,0.04)" }}>
@@ -587,7 +590,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
                 <Typography variant="h6" sx={{ fontWeight: 800, color: "#ffd700", display: "flex", alignItems: "center", gap: 1 }}>
-                  <EventAvailable /> Özel Etkinlikler & Webinar Davetiyeleri
+                  <EventAvailable /> {t('analysis.events')}
                 </Typography>
                 <Chip label="GOLD" size="small" sx={{ background: "#ffd700", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -595,10 +598,10 @@ export default function AnalysisPage() {
               {isGoldUnlocked ? (
                 <Box sx={{ textAlign: "center", py: 3 }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 800, mb: 1 }}>
-                    Gold Yatırımcı Zirvesi 2026
+                    {t('analysis.summit_title')}
                   </Typography>
                   <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-                    Tarih: 15 Haziran 2026 Saat: 20:30 (Online)
+                    {t('analysis.summit_date')}
                   </Typography>
                   <Box
                     sx={{
@@ -611,7 +614,7 @@ export default function AnalysisPage() {
                     }}
                   >
                     <Typography variant="caption" sx={{ color: "text.secondary", display: "block", mb: 0.5 }}>
-                      GİRİŞ KODUNUZ
+                      {t('analysis.entry_code')}
                     </Typography>
                     <Typography variant="h5" sx={{ fontWeight: 900, color: "#ffd700", letterSpacing: 3 }}>
                       PORTGOLD26
@@ -640,7 +643,7 @@ export default function AnalysisPage() {
             >
               <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 3 }}>
                 <Typography variant="h5" sx={{ fontWeight: 800, color: "#ffd700", display: "flex", alignItems: "center", gap: 1 }}>
-                  <AutoAwesome /> Yapay Zeka ile Kişiselleştirilmiş Yatırım Stratejisi
+                  <AutoAwesome /> {t('analysis.ai_strategy_title')}
                 </Typography>
                 <Chip label="GOLD" size="small" sx={{ background: "#ffd700", color: "#000", fontWeight: 700, fontSize: "0.65rem" }} />
               </Box>
@@ -648,52 +651,52 @@ export default function AnalysisPage() {
               {isGoldUnlocked ? (
                 <Box>
                   <Typography variant="body2" sx={{ color: "text.secondary", mb: 3 }}>
-                    Yatırım bütçeniz, risk toleransınız ve hedef vadeniz doğrultusunda Gemini AI tarafından optimize edilmiş kişisel bir varlık dağılım stratejisi oluşturun.
+                    {t('analysis.ai_strategy_desc')}
                   </Typography>
 
                   <Box component="form" onSubmit={handleGenerateStrategy} sx={{ display: "flex", flexWrap: "wrap", gap: 2.5, mb: 4 }}>
                     <TextField
-                      label="Yatırım Bütçesi (TRY)"
+                      label={t('analysis.budget_label')}
                       variant="outlined"
                       type="number"
                       required
                       value={budget}
                       onChange={(e) => setBudget(e.target.value)}
-                      placeholder="Örn: 100000"
+                      placeholder={t('analysis.budget_placeholder')}
                       sx={{ flex: 1, minWidth: 200 }}
                       slotProps={{ inputLabel: { shrink: true } }}
                     />
 
                     <FormControl sx={{ flex: 1, minWidth: 200 }}>
-                      <InputLabel id="risk-select-label" shrink>Risk Toleransı</InputLabel>
+                      <InputLabel id="risk-select-label" shrink>{t('analysis.risk_label')}</InputLabel>
                       <Select
                         labelId="risk-select-label"
                         id="risk-select"
                         value={risk}
                         onChange={(e) => setRisk(e.target.value as any)}
-                        label="Risk Toleransı"
+                        label={t('analysis.risk_label')}
                         notched
                       >
-                        <MenuItem value="conservative">Düşük Risk (Defansif / Koruyucu)</MenuItem>
-                        <MenuItem value="moderate">Orta Risk (Dengeli Getiri)</MenuItem>
-                        <MenuItem value="aggressive">Yüksek Risk (Agresif Büyüme)</MenuItem>
+                        <MenuItem value="conservative">{t('analysis.risk_low')}</MenuItem>
+                        <MenuItem value="moderate">{t('analysis.risk_medium')}</MenuItem>
+                        <MenuItem value="aggressive">{t('analysis.risk_high')}</MenuItem>
                       </Select>
                     </FormControl>
 
                     <FormControl sx={{ flex: 1, minWidth: 150 }}>
-                      <InputLabel id="duration-select-label" shrink>Yatırım Vadesi</InputLabel>
+                      <InputLabel id="duration-select-label" shrink>{t('analysis.duration_label')}</InputLabel>
                       <Select
                         labelId="duration-select-label"
                         id="duration-select"
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
-                        label="Yatırım Vadesi"
+                        label={t('analysis.duration_label')}
                         notched
                       >
-                        <MenuItem value="3 Ay">3 Ay</MenuItem>
-                        <MenuItem value="6 Ay">6 Ay</MenuItem>
-                        <MenuItem value="1 Yıl">1 Yıl</MenuItem>
-                        <MenuItem value="3 Yıl+">3 Yıl+</MenuItem>
+                        <MenuItem value="3 Ay">{t('analysis.duration_3m')}</MenuItem>
+                        <MenuItem value="6 Ay">{t('analysis.duration_6m')}</MenuItem>
+                        <MenuItem value="1 Yıl">{t('analysis.duration_1y')}</MenuItem>
+                        <MenuItem value="3 Yıl+">{t('analysis.duration_3y')}</MenuItem>
                       </Select>
                     </FormControl>
 
@@ -709,7 +712,7 @@ export default function AnalysisPage() {
                         "&:hover": { background: "linear-gradient(135deg, #ffee55 0%, #ffa500 100%)" },
                       }}
                     >
-                      {generating ? <CircularProgress size={24} sx={{ color: "#000" }} /> : "Strateji Oluştur"}
+                      {generating ? <CircularProgress size={24} sx={{ color: "#000" }} /> : t('analysis.btn_generate')}
                     </Button>
                   </Box>
 

@@ -10,6 +10,7 @@ const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY', maximumFractionDigits: 2 }).format(value);
 
 import { useMarket } from "../contexts/MarketContext";
+import { useTranslation } from "react-i18next";
 
 const categoryColors: Record<string, string> = {
   crypto: '#f59e0b',
@@ -25,6 +26,7 @@ export default function MarketsPage() {
   const [selectedChart, setSelectedChart] = useState<MarketInstrument | null>(null);
   const [watchlist, setWatchlist] = useState<string[]>([]);
   const [showWatchlistOnly, setShowWatchlistOnly] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const fetchWatchlist = async () => {
@@ -32,7 +34,7 @@ export default function MarketsPage() {
         const res = await api.get('/portfolio/watchlist');
         setWatchlist(res.data.watchlist || []);
       } catch (err) {
-        console.error("Failed to fetch watchlist", err);
+        console.error(t('markets.error_fetch_watchlist'), err);
       }
     };
     fetchWatchlist();
@@ -43,12 +45,12 @@ export default function MarketsPage() {
       const res = await api.post('/portfolio/watchlist', { symbol });
       setWatchlist(res.data.watchlist || []);
     } catch (err) {
-      console.error("Failed to toggle watchlist", err);
+      console.error(t('markets.error_toggle_watchlist'), err);
     }
   };
 
   if (loading) {
-    return <Box sx={{ p: 4, textAlign: 'center' }}><Typography>Yükleniyor...</Typography></Box>;
+    return <Box sx={{ p: 4, textAlign: 'center' }}><Typography>{t('markets.loading')}</Typography></Box>;
   }
 
   const handleOpenChart = (item: MarketInstrument) => {
@@ -60,8 +62,8 @@ export default function MarketsPage() {
     <Box>
       {/* Section Header */}
       <Box sx={{ mb: 3 }}>
-        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Popüler Yatırım Ürünleri</Typography>
-        <Typography variant="body2" sx={{ color: 'text.secondary' }}>En çok işlem gören yatırım araçları</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>{t('markets.popular_title')}</Typography>
+        <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('markets.popular_subtitle')}</Typography>
       </Box>
 
       {/* Popular Cards */}
@@ -137,7 +139,7 @@ export default function MarketsPage() {
                         },
                       }}
                     >
-                      Grafik
+                      {t('markets.btn_chart')}
                     </Button>
                   </Box>
                 </Box>
@@ -150,11 +152,11 @@ export default function MarketsPage() {
       {/* All Markets Table */}
       <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <Box>
-          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>Tüm Yatırım Ürünleri</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Piyasa fiyatları gerçek zamanlı güncellenmektedir</Typography>
+          <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5 }}>{t('markets.all_title')}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('markets.all_subtitle')}</Typography>
         </Box>
         <Chip 
-          label="Sadece Favoriler" 
+          label={t('markets.only_favorites')} 
           icon={showWatchlistOnly ? <Star /> : <StarBorder />}
           clickable
           onClick={() => setShowWatchlistOnly(!showWatchlistOnly)}
@@ -180,11 +182,11 @@ export default function MarketsPage() {
           <TableHead>
             <TableRow>
               <TableCell width={50}></TableCell>
-              <TableCell>Ürün</TableCell>
-              <TableCell>Kategori</TableCell>
-              <TableCell align="right">Fiyat</TableCell>
-              <TableCell align="right">30G Değişim</TableCell>
-              <TableCell align="center">Grafik</TableCell>
+              <TableCell>{t('markets.table_instrument')}</TableCell>
+              <TableCell>{t('markets.table_category')}</TableCell>
+              <TableCell align="right">{t('markets.table_price')}</TableCell>
+              <TableCell align="right">{t('markets.table_change_30d')}</TableCell>
+              <TableCell align="center">{t('markets.btn_chart')}</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
@@ -243,7 +245,7 @@ export default function MarketsPage() {
                       },
                     }}
                   >
-                    Grafiği Aç
+                    {t('markets.table_open_chart')}
                   </Button>
                 </TableCell>
               </TableRow>

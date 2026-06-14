@@ -29,6 +29,7 @@ import {
 import ChartModal from "../components/ChartModal";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import { ResponsiveContainer, AreaChart, Area } from "recharts";
+import { useTranslation } from "react-i18next";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", {
@@ -44,12 +45,7 @@ const categoryColors: Record<string, string> = {
   silver: "#c0c0c0",
 };
 
-const categoryLabels: Record<string, string> = {
-  crypto: "Kripto",
-  forex: "Döviz",
-  gold: "Altın",
-  silver: "Gümüş",
-};
+// categoryLabels will be moved inside the component to use translation
 
 function MiniSparkline({ data, color }: { data: number[]; color: string }) {
   const chartData = data.map((v, i) => ({ i, v }));
@@ -85,6 +81,14 @@ export default function WatchlistPage() {
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedChart, setSelectedChart] = useState<MarketInstrument | null>(null);
+  const { t } = useTranslation();
+
+  const categoryLabels: Record<string, string> = {
+    crypto: t('watchlist.cat_crypto'),
+    forex: t('watchlist.cat_forex'),
+    gold: t('watchlist.cat_gold'),
+    silver: t('watchlist.cat_silver'),
+  };
 
   useEffect(() => {
     const fetchWatchlist = async () => {
@@ -92,7 +96,7 @@ export default function WatchlistPage() {
         const res = await api.get("/portfolio/watchlist");
         setWatchlist(res.data.watchlist || []);
       } catch (err) {
-        console.error("Failed to fetch watchlist", err);
+        console.error(t('watchlist.error_fetch'), err);
       } finally {
         setLoading(false);
       }
@@ -105,7 +109,7 @@ export default function WatchlistPage() {
       const res = await api.post("/portfolio/watchlist", { symbol });
       setWatchlist(res.data.watchlist || []);
     } catch (err) {
-      console.error("Failed to toggle watchlist", err);
+      console.error(t('watchlist.error_toggle'), err);
     }
   };
 
@@ -121,10 +125,10 @@ export default function WatchlistPage() {
     <Box>
       <Box sx={{ mb: 3 }}>
         <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-          ⭐ Favori Enstrümanlar
+          {t('watchlist.title')}
         </Typography>
         <Typography variant="body2" sx={{ color: "text.secondary" }}>
-          Takip ettiğiniz yatırım araçlarının canlı verileri
+          {t('watchlist.subtitle')}
         </Typography>
       </Box>
 
@@ -144,14 +148,13 @@ export default function WatchlistPage() {
             variant="h6"
             sx={{ fontWeight: 600, mb: 1, color: "text.secondary" }}
           >
-            Henüz favori enstrümanınız yok
+            {t('watchlist.empty_title')}
           </Typography>
           <Typography
             variant="body2"
             sx={{ color: "text.secondary", mb: 3 }}
           >
-            Piyasalar sayfasından yıldız ikonuna tıklayarak favorilerinize
-            enstrüman ekleyebilirsiniz.
+            {t('watchlist.empty_desc')}
           </Typography>
           <Button
             variant="contained"
@@ -164,7 +167,7 @@ export default function WatchlistPage() {
               },
             }}
           >
-            Piyasalara Git
+            {t('watchlist.btn_go_markets')}
           </Button>
         </Paper>
       ) : (
@@ -172,7 +175,7 @@ export default function WatchlistPage() {
           {/* Summary Chips */}
           <Box sx={{ display: "flex", gap: 1, mb: 3, flexWrap: "wrap" }}>
             <Chip
-              label={`${watchedInstruments.length} Enstrüman`}
+              label={`${watchedInstruments.length} ${t('watchlist.instruments_count')}`}
               size="small"
               sx={{
                 background: "rgba(0, 212, 255, 0.1)",
@@ -213,12 +216,12 @@ export default function WatchlistPage() {
               <TableHead>
                 <TableRow>
                   <TableCell width={50}></TableCell>
-                  <TableCell>Ürün</TableCell>
-                  <TableCell>Kategori</TableCell>
-                  <TableCell align="right">Fiyat</TableCell>
-                  <TableCell align="right">30G Değişim</TableCell>
-                  <TableCell align="center">Trend</TableCell>
-                  <TableCell align="center">İşlem</TableCell>
+                  <TableCell>{t('watchlist.table_instrument')}</TableCell>
+                  <TableCell>{t('watchlist.table_category')}</TableCell>
+                  <TableCell align="right">{t('watchlist.table_price')}</TableCell>
+                  <TableCell align="right">{t('watchlist.table_change_30d')}</TableCell>
+                  <TableCell align="center">{t('watchlist.table_trend')}</TableCell>
+                  <TableCell align="center">{t('watchlist.table_action')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>

@@ -16,6 +16,7 @@ import {
   Chip,
 } from "@mui/material";
 import { TrendingUp, Person, AdminPanelSettings, Email, Lock, Badge, SmartToy, AccessTime, ShowChart } from "@mui/icons-material";
+import { useTranslation } from "react-i18next";
 
 interface LoginRegisterPageProps {
   onAuthSuccess: (token: string, user: AuthUser, balance: number) => void;
@@ -33,8 +34,15 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
   const [simulationCode, setSimulationCode] = useState("");
   const [wordIndex, setWordIndex] = useState(0);
 
+  const { t } = useTranslation();
+
   const plans = ["free", "bronze", "silver", "gold"] as const;
-  const dynamicWords = ["Platformu", "Asistanı", "Ekosistemi", "Rehberi"];
+  const dynamicWords = [
+    t('auth.dynamic_1', "Platformu"),
+    t('auth.dynamic_2', "Asistanı"),
+    t('auth.dynamic_3', "Ekosistemi"),
+    t('auth.dynamic_4', "Rehberi")
+  ];
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -87,6 +95,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
       } else {
         setError("Giriş işlemi başarısız. Lütfen bilgilerinizi kontrol edin.");
       }
+      setAuthForm({ fullName: "", email: "", password: "" });
     } finally {
       setLoading(false);
     }
@@ -133,6 +142,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
     if (newPanelMode !== null) {
       setPanelMode(newPanelMode as "user" | "expert");
       setMode("login"); // Reset to login when switching panels
+      setAuthForm({ fullName: "", email: "", password: "" });
       setError("");
     }
   };
@@ -149,7 +159,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
   return (
     <Box
       sx={{
-        minHeight: '100vh',
+        minHeight: 'calc(100vh - 76px)',
         display: 'flex',
         position: 'relative',
         overflow: 'hidden',
@@ -212,7 +222,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
               lineHeight: 1.3,
             }}
           >
-            Geleceğin Yatırım
+            {t('auth.hero_title_part1')}
             <br />
             <Box component="span" sx={{ display: 'inline-block', minWidth: '220px' }}>
               <span
@@ -239,15 +249,14 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
               maxWidth: 400,
             }}
           >
-            Kripto, döviz, altın ve gümüş piyasalarını gerçek zamanlı takip edin.
-            AI destekli danışmanlık ve uzman rehberliği ile yatırımlarınızı yönetin.
+            {t('auth.hero_desc')}
           </Typography>
 
           <Box sx={{ display: 'flex', gap: 3 }}>
             {[
-              { label: 'Aktif Piyasa', value: '20+', icon: <ShowChart sx={{ color: '#00d4ff', fontSize: 24, mb: 1 }} /> },
-              { label: 'Canlı Veri', value: '7/24', icon: <AccessTime sx={{ color: '#10b981', fontSize: 24, mb: 1 }} /> },
-              { label: 'AI Danışman', value: '+portfol.ai', icon: <SmartToy sx={{ color: '#7c3aed', fontSize: 24, mb: 1 }} /> },
+              { label: t('auth.stat_active_market'), value: '20+', icon: <ShowChart sx={{ color: '#00d4ff', fontSize: 24, mb: 1 }} /> },
+              { label: t('auth.stat_live_data'), value: '7/24', icon: <AccessTime sx={{ color: '#10b981', fontSize: 24, mb: 1 }} /> },
+              { label: t('auth.stat_ai_advisor'), value: '+portfol.ai', icon: <SmartToy sx={{ color: '#7c3aed', fontSize: 24, mb: 1 }} /> },
             ].map((stat, i) => (
               <Box
                 key={stat.label}
@@ -346,13 +355,12 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
               </Box>
 
               <Typography variant="h5" sx={{ fontWeight: 700, mb: 0.5, textAlign: 'center' }}>
-                {mode === 'login' ? 'Hoş Geldiniz' : 'Hesap Oluşturun'}
+                {mode === 'login' ? t('auth.welcome') : t('auth.create_account')}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3, textAlign: 'center' }}>
-                {mode === 'login' ? 'Hesabınıza giriş yapın' : 'Yeni hesabınızı oluşturun'}
+                {mode === 'login' ? t('auth.welcome_desc') : t('auth.create_account_desc')}
               </Typography>
 
-              {/* Panel Mode Toggle */}
               <ToggleButtonGroup
                 color="primary"
                 value={panelMode}
@@ -370,10 +378,10 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 }}
               >
                 <ToggleButton value="user">
-                  <Person sx={{ fontSize: '1rem' }} /> Kullanıcı
+                  <Person sx={{ fontSize: '1rem' }} /> {t('auth.panel_user')}
                 </ToggleButton>
                 <ToggleButton value="expert">
-                  <AdminPanelSettings sx={{ fontSize: '1rem' }} /> Uzman
+                  <AdminPanelSettings sx={{ fontSize: '1rem' }} /> {t('auth.panel_expert')}
                 </ToggleButton>
               </ToggleButtonGroup>
 
@@ -381,14 +389,18 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
               <Box sx={{ borderBottom: 1, borderColor: 'rgba(255,255,255,0.06)', mb: 3 }}>
                 <Tabs
                   value={mode}
-                  onChange={(e, newValue) => setMode(newValue)}
+                  onChange={(e, newValue) => {
+                    setMode(newValue);
+                    setAuthForm({ fullName: "", email: "", password: "" });
+                    setError("");
+                  }}
                   centered
                   sx={{
                     '& .MuiTab-root': { py: 1.5 },
                   }}
                 >
-                  <Tab label="Giriş Yap" value="login" />
-                  {panelMode === 'user' && <Tab label="Kayıt Ol" value="register" />}
+                  <Tab label={t('auth.login_tab')} value="login" />
+                  {panelMode === 'user' && <Tab label={t('auth.register_tab')} value="register" />}
                 </Tabs>
               </Box>
 
@@ -400,7 +412,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                     required
                     fullWidth
                     id="fullName"
-                    label="Ad Soyad"
+                    label={t('auth.fullName')}
                     name="fullName"
                     autoComplete="name"
                     autoFocus
@@ -419,7 +431,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                   required
                   fullWidth
                   id="email"
-                  label="E-posta Adresi"
+                  label={t('auth.email')}
                   name="email"
                   autoComplete="email"
                   value={authForm.email}
@@ -436,7 +448,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                   required
                   fullWidth
                   name="password"
-                  label="Şifre"
+                  label={t('auth.password')}
                   type="password"
                   id="password"
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
@@ -457,7 +469,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                       onClick={() => setForgotPasswordStep(1)}
                       sx={{ textTransform: 'none', color: 'text.secondary', '&:hover': { color: '#00d4ff' } }}
                     >
-                      Şifremi unuttum
+                      {t('auth.forgot_password')}
                     </Button>
                   </Box>
                 )}
@@ -467,7 +479,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
 
                 {panelMode === "expert" && (
                   <Alert severity="info" sx={{ mt: 2 }}>
-                    Sadece uzman hesaplarıyla giriş yapabilirsiniz. <br />
+                    {t('auth.expert_only_alert')} <br />
                     <strong>Demo:</strong> gold@portfol.io / expert123
                   </Alert>
                 )}
@@ -491,14 +503,14 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                   }}
                   disabled={loading}
                 >
-                  {loading ? <CircularProgress size={24} color="inherit" /> : (mode === 'login' ? 'Giriş Yap' : 'Kayıt Ol')}
+                  {loading ? <CircularProgress size={24} color="inherit" /> : (mode === 'login' ? t('auth.btn_login') : t('auth.btn_register'))}
                 </Button>
               </Box>
 
               {/* Demo Accounts */}
               <Box sx={{ mt: 3, p: 2, borderRadius: '12px', background: 'rgba(255, 255, 255, 0.02)', border: '1px solid rgba(255, 255, 255, 0.06)' }}>
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', display: 'block', mb: 1.5 }}>
-                  Demo Hesaplar
+                  {t('auth.demo_accounts')}
                 </Typography>
                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -524,16 +536,16 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
             </>
           ) : forgotPasswordStep === 1 ? (
             <Box component="form" onSubmit={handleRequestReset}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, textAlign: 'center' }}>Şifremi Unuttum</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, textAlign: 'center' }}>{t('auth.forgot_title')}</Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 4, textAlign: 'center' }}>
-                Kayıtlı e-posta adresinizi girin, size bir kurtarma kodu gönderelim.
+                {t('auth.forgot_desc')}
               </Typography>
               
               <TextField
                 margin="normal"
                 required
                 fullWidth
-                label="E-posta Adresi"
+                label={t('auth.email')}
                 value={resetData.email}
                 onChange={(e) => setResetData(prev => ({ ...prev, email: e.target.value }))}
                 InputProps={{ startAdornment: <Email sx={{ mr: 1, color: 'text.secondary' }} /> }}
@@ -549,7 +561,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 sx={{ mt: 4, py: 1.5, fontWeight: 700, background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)' }}
                 disabled={loading}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Kod Gönder'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : t('auth.btn_send_code')}
               </Button>
               
               <Button 
@@ -557,20 +569,20 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 onClick={() => setForgotPasswordStep(0)}
                 sx={{ mt: 1, color: 'text.secondary', textTransform: 'none' }}
               >
-                Geri Dön
+                {t('auth.btn_back')}
               </Button>
             </Box>
           ) : (
             <Box component="form" onSubmit={handlePerformReset}>
-              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, textAlign: 'center' }}>Şifre Belirleme</Typography>
+              <Typography variant="h5" sx={{ fontWeight: 700, mb: 1, textAlign: 'center' }}>{t('auth.reset_title')}</Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, textAlign: 'center' }}>
-                E-postanıza gönderilen kodu ve yeni şifrenizi girin.
+                {t('auth.reset_desc')}
               </Typography>
 
               {simulationCode && (
                 <Box sx={{ p: 1, mb: 2, background: 'rgba(16, 185, 129, 0.1)', border: '1px dashed #10b981', borderRadius: '8px', textAlign: 'center' }}>
                   <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 700 }}>
-                    SIMÜLASYON KODU: {simulationCode}
+                    {t('auth.sim_code')}: {simulationCode}
                   </Typography>
                 </Box>
               )}
@@ -579,8 +591,9 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 margin="normal"
                 required
                 fullWidth
-                label="Doğrulama Kodu"
+                label={t('auth.ver_code')}
                 value={resetData.code}
+                autoComplete="off"
                 onChange={(e) => setResetData(prev => ({ ...prev, code: e.target.value }))}
                 inputProps={{ style: { textAlign: 'center', letterSpacing: '0.3em', fontWeight: 700 } }}
                   sx={inputStyles}
@@ -589,9 +602,10 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 margin="normal"
                 required
                 fullWidth
-                label="Yeni Şifre"
+                label={t('auth.new_password')}
                 type="password"
                 value={resetData.newPassword}
+                autoComplete="new-password"
                 onChange={(e) => setResetData(prev => ({ ...prev, newPassword: e.target.value }))}
                 InputProps={{ startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary' }} /> }}
                   sx={inputStyles}
@@ -607,7 +621,7 @@ export default function LoginRegisterPage({ onAuthSuccess }: LoginRegisterPagePr
                 sx={{ mt: 4, py: 1.5, fontWeight: 700, background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)' }}
                 disabled={loading}
               >
-                {loading ? <CircularProgress size={24} color="inherit" /> : 'Şifreyi Güncelle'}
+                {loading ? <CircularProgress size={24} color="inherit" /> : t('auth.btn_update_password')}
               </Button>
             </Box>
           )}

@@ -4,6 +4,7 @@ import App from './App.tsx'
 import { SnackbarProvider } from 'notistack';
 import ErrorBoundary from './components/ErrorBoundary';
 import './globals.css';
+import './i18n';
 
 import { MarketProvider } from './contexts/MarketContext';
 import { AppThemeProvider } from './contexts/ThemeContext';

@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { ChatMessage, ExpertConversationItem, AuthUser } from "../types";
 import { Avatar, Box, Button, Grid, List, ListItem, ListItemAvatar, ListItemText, Paper, TextField, Typography, Alert, Divider, Chip } from "@mui/material";
 import { Send, Person, AdminPanelSettings } from "@mui/icons-material";
+import { useTranslation } from "react-i18next";
 
 interface ExpertPanelPageProps { user: AuthUser | null; token: string | null; }
 
@@ -12,9 +13,9 @@ const formatDateTime = (value: string | null): string => {
   return new Date(value).toLocaleString("tr-TR", { year: "numeric", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 const formatMessageTime = (value: string): string => new Date(value).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-const formatReadStatus = (readAt?: string | null): string => {
-  if (!readAt) return "Gonderildi";
-  return `Okundu ${new Date(readAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
+const formatReadStatus = (readAt: string | undefined | null, t: any): string => {
+  if (!readAt) return t('chat.status_sent');
+  return `${t('chat.status_read')} ${new Date(readAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
 };
 
 export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
@@ -24,6 +25,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
   const [expertQueue, setExpertQueue] = useState<ExpertConversationItem[]>([]);
   const [selectedUserId, setSelectedUserId] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (!token || !user || user.role !== "expert") return;
@@ -52,7 +54,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
         const res = await api.get<ExpertConversationItem[]>("/chat/expert/conversations");
         setExpertQueue(res.data);
         if (!selectedUserId && res.data.length > 0) setSelectedUserId(res.data[0].userId);
-      } catch { setError("Konuşma kuyruğu yüklenemedi."); }
+      } catch { setError(t('expertPanel.error_queue')); }
     };
     loadData();
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -65,7 +67,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
         setError(null);
         const res = await api.get<ChatMessage[]>(`/chat/messages?tier=${user.membership}&userId=${selectedUserId}`);
         setMessages(res.data);
-      } catch { setError("Mesajlar yüklenemedi."); }
+      } catch { setError(t('expertPanel.error_messages')); }
     };
     loadMessages();
   }, [selectedUserId, user]);
@@ -86,21 +88,21 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
       const queueRes = await api.get<ExpertConversationItem[]>("/chat/expert/conversations");
       setExpertQueue(queueRes.data);
     } catch {
-      setError("Mesaj gönderilemedi.");
+      setError(t('expertPanel.error_send'));
       setMessages(prev => prev.filter(m => m._id !== tempId));
     }
   };
 
-  if (!user || user.role !== "expert") return <Alert severity="error">Bu panel sadece uzmanlar için kullanılabilir.</Alert>;
+  if (!user || user.role !== "expert") return <Alert severity="error">{t('expertPanel.error_expert_only')}</Alert>;
 
   return (
     <Box>
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
         <AdminPanelSettings sx={{ color: '#7c3aed', fontSize: 28 }} />
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>Uzman Paneli</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('expertPanel.title')}</Typography>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {user.membership?.toUpperCase()} kanalı — Kullanıcı mesajlarını yanıtlayın
+            {t('expertPanel.subtitle', { tier: user.membership?.toUpperCase() })}
           </Typography>
         </Box>
       </Box>
@@ -111,14 +113,14 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
           <Paper elevation={0} sx={{ flex: 1, display: "flex", flexDirection: "column", background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
             <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                Konuşma Kuyruğu
+                {t('expertPanel.queue_title')}
                 <Chip size="small" label={expertQueue.length} sx={{ ml: 1, height: 20, fontSize: '0.65rem', fontWeight: 700, background: 'rgba(0,212,255,0.1)', color: '#00d4ff' }} />
               </Typography>
             </Box>
             {error && <Alert severity="warning" sx={{ m: 1 }}>{error}</Alert>}
             <List sx={{ overflow: "auto", flex: 1 }}>
               {expertQueue.length === 0 ? (
-                <ListItem><ListItemText primary="Şu an bekleyen kullanıcı yok." primaryTypographyProps={{ color: 'text.secondary', fontSize: '0.85rem' }} /></ListItem>
+                <ListItem><ListItemText primary={t('expertPanel.queue_empty')} primaryTypographyProps={{ color: 'text.secondary', fontSize: '0.85rem' }} /></ListItem>
               ) : expertQueue.map((item, index) => (
                 <Box key={item.userId}>
                   <ListItem
@@ -139,7 +141,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
                     </ListItemAvatar>
                     <ListItemText
                       primary={<Typography variant="body2" sx={{ fontWeight: 600 }}>{item.userName}</Typography>}
-                      secondary={<Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{item.latestMessage || "Yeni konuşma"}</Typography>}
+                      secondary={<Typography variant="caption" sx={{ color: 'text.secondary' }} noWrap>{item.latestMessage || t('expertPanel.new_conversation')}</Typography>}
                     />
                     <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.6rem', whiteSpace: 'nowrap' }}>{formatDateTime(item.latestAt)}</Typography>
                   </ListItem>
@@ -154,13 +156,13 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
           <Paper elevation={0} sx={{ flex: 1, display: "flex", flexDirection: "column", background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', overflow: 'hidden' }}>
             <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                {selectedUserId ? `Kullanıcı ile Sohbet` : 'Bir kullanıcı seçin'}
+                {selectedUserId ? t('expertPanel.chat_title') : t('expertPanel.chat_select')}
               </Typography>
             </Box>
             {!selectedUserId ? (
               <Box sx={{ display: "flex", alignItems: "center", justifyContent: "center", height: "100%", flexDirection: 'column', gap: 2 }}>
                 <Person sx={{ fontSize: 48, color: 'rgba(255,255,255,0.1)' }} />
-                <Typography color="text.secondary">Kuyruktan bir kullanıcı seçin.</Typography>
+                <Typography color="text.secondary">{t('expertPanel.chat_select_desc')}</Typography>
               </Box>
             ) : (
               <>
@@ -179,7 +181,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
                           <Typography variant="caption" sx={{ fontWeight: 700, color: isExpert ? '#7c3aed' : '#00d4ff' }}>{displayName}</Typography>
                           <Typography variant="body2" sx={{ mt: 0.3 }}>{msg.message}</Typography>
                           <Typography variant="caption" sx={{ mt: 0.5, display: "block", opacity: 0.6, textAlign: isExpert ? "right" : "left", fontSize: '0.6rem' }}>
-                            {formatMessageTime(msg.createdAt)}{isExpert ? ` • ${formatReadStatus(msg.readAt)}` : ""}
+                            {formatMessageTime(msg.createdAt)}{isExpert ? ` • ${formatReadStatus(msg.readAt, t)}` : ""}
                           </Typography>
                         </Box>
                       </Box>
@@ -188,7 +190,7 @@ export default function ExpertPanelPage({ user, token }: ExpertPanelPageProps) {
                 </Box>
                 <Box component="form" sx={{ display: "flex", gap: 1, p: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}
                   onSubmit={(e) => { e.preventDefault(); sendMessage(); }}>
-                  <TextField fullWidth variant="outlined" size="small" value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder="Kullanıcıya mesaj yazın..." />
+                  <TextField fullWidth variant="outlined" size="small" value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder={t('expertPanel.chat_placeholder')} />
                   <Button type="submit" variant="contained" disabled={!chatText.trim()} sx={{
                     minWidth: 48, background: 'linear-gradient(135deg, #7c3aed, #00d4ff)',
                     '&:hover': { background: 'linear-gradient(135deg, #9655f5, #33ddff)' },

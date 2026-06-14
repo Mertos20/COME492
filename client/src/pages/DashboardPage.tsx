@@ -5,6 +5,7 @@ import type { PortfolioSummary } from "../types";
 import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Card, CardContent, CardActionArea } from "@mui/material";
 import { AccountBalanceWallet, ShowChart, Receipt, People, WorkspacePremium, AddCard, TrendingUp, TrendingDown, Radar } from '@mui/icons-material';
 import LoadingSkeleton from "../components/LoadingSkeleton";
+import { useTranslation } from "react-i18next";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -143,6 +144,7 @@ function ActionCard({ title, description, to, icon, index }: { title: string, de
 export default function DashboardPage() {
   const [portfolio, setPortfolio] = useState<PortfolioSummary | null>(null);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const loadPortfolio = async () => {
@@ -150,7 +152,7 @@ export default function DashboardPage() {
         const res = await api.get<PortfolioSummary>("/portfolio/summary");
         setPortfolio(res.data);
       } catch {
-        console.error("Portföy yüklenemedi");
+        console.error(t('dashboard.error_console'));
       } finally {
         setLoading(false);
       }
@@ -167,17 +169,17 @@ export default function DashboardPage() {
   }
 
   if (!portfolio) {
-    return <Typography color="error">Portföy bilgileri yüklenemedi.</Typography>;
+    return <Typography color="error">{t('dashboard.error_loading')}</Typography>;
   }
 
   const quickActions = [
-      { title: "Cüzdan Yönetimi", to: "/load-balance", description: "Cüzdanınıza para ekleyin veya çekin", icon: <AddCard /> },
-      { title: "Al / Sat", to: "/trading", description: "Enstrüman ticareti yapın", icon: <ShowChart /> },
-      { title: "Portföy", to: "/portfolio", description: "Varlıklarınızı inceleyin", icon: <AccountBalanceWallet /> },
-      { title: "İşlem Geçmişi", to: "/transactions", description: "Tüm işlemlerinizi görün", icon: <Receipt /> },
-      { title: "Danışmanlar", to: "/chat", description: "Uzmanlarla iletişim kurun", icon: <People /> },
-      { title: "Üyelikler", to: "/subscriptions", description: "Premium özellikler için", icon: <WorkspacePremium /> },
-      { title: "Tahmin Modülü", to: "/game", description: "Piyasa yönünü analiz edin", icon: <Radar /> },
+      { title: t('nav.load_balance'), to: "/load-balance", description: t('dashboard.quick_action_wallet'), icon: <AddCard /> },
+      { title: t('nav.trading'), to: "/trading", description: t('dashboard.quick_action_trade'), icon: <ShowChart /> },
+      { title: t('nav.portfolio'), to: "/portfolio", description: t('dashboard.quick_action_portfolio'), icon: <AccountBalanceWallet /> },
+      { title: t('nav.transactions'), to: "/transactions", description: t('dashboard.quick_action_transactions'), icon: <Receipt /> },
+      { title: t('nav.chat'), to: "/chat", description: t('dashboard.quick_action_chat'), icon: <People /> },
+      { title: t('nav.subscriptions'), to: "/subscriptions", description: t('dashboard.quick_action_subscriptions'), icon: <WorkspacePremium /> },
+      { title: t('nav.game'), to: "/game", description: t('dashboard.quick_action_game'), icon: <Radar /> },
   ]
 
   return (
@@ -185,23 +187,23 @@ export default function DashboardPage() {
         <Grid item xs={12}>
             <Box sx={{ mb: 1 }}>
               <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>
-                Portföy Özeti
+                {t('dashboard.summary_title')}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-                Yatırımlarınızın anlık durumunu takip edin
+                {t('dashboard.summary_desc')}
               </Typography>
             </Box>
             <Grid container spacing={2} sx={{ mt: 1 }}>
-                <StatCard title="Toplam Bakiye" value={formatMoney(portfolio.balance)} index={0} />
-                <StatCard title="Yatırım Değeri" value={formatMoney(portfolio.investmentValue)} index={1} />
-                <StatCard title="Anlık Değer" value={formatMoney(portfolio.currentValue)} index={2} />
-                <StatCard title="Kar/Zarar" value={formatMoney(portfolio.totalPnl)} pnl={portfolio.totalPnl} pnlPercent={portfolio.totalPnlPercent} index={3} />
+                <StatCard title={t('dashboard.total_balance')} value={formatMoney(portfolio.balance)} index={0} />
+                <StatCard title={t('dashboard.investment_value')} value={formatMoney(portfolio.investmentValue)} index={1} />
+                <StatCard title={t('dashboard.current_value')} value={formatMoney(portfolio.currentValue)} index={2} />
+                <StatCard title={t('dashboard.pnl')} value={formatMoney(portfolio.totalPnl)} pnl={portfolio.totalPnl} pnlPercent={portfolio.totalPnlPercent} index={3} />
             </Grid>
         </Grid>
 
         <Grid item xs={12}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, mt: 1 }}>
-              Hızlı Erişim
+              {t('dashboard.quick_access')}
             </Typography>
             <Grid container spacing={2}>
                 {quickActions.map((action, i) => <ActionCard key={action.to} {...action} index={i} />)}
@@ -210,12 +212,12 @@ export default function DashboardPage() {
 
         <Grid item xs={12}>
             <Typography variant="h5" sx={{ fontWeight: 700, mb: 2, mt: 1 }}>
-              Son Varlıklarınız
+              {t('dashboard.recent_assets')}
             </Typography>
             {portfolio.holdings.length === 0 ? (
                 <Paper elevation={0} sx={{ p: 4, textAlign: 'center', background: 'rgba(255,255,255,0.02)' }}>
                     <Typography sx={{ color: 'text.secondary', mb: 2 }}>
-                        Henüz varlık edinmemişsiniz.
+                        {t('dashboard.no_assets')}
                     </Typography>
                     <Button
                       component={RouterLink}
@@ -226,7 +228,7 @@ export default function DashboardPage() {
                         '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' },
                       }}
                     >
-                      Al/Sat Paneline Git
+                      {t('dashboard.go_trade')}
                     </Button>
                 </Paper>
             ) : (
@@ -244,11 +246,11 @@ export default function DashboardPage() {
                     <Table aria-label="holdings table">
                         <TableHead>
                             <TableRow>
-                                <TableCell>Sembol</TableCell>
-                                <TableCell align="right">Miktar</TableCell>
-                                <TableCell align="right">Ort. Alış</TableCell>
-                                <TableCell align="right">Anlık Fiyat</TableCell>
-                                <TableCell align="right">Kar/Zarar</TableCell>
+                                <TableCell>{t('dashboard.table_symbol')}</TableCell>
+                                <TableCell align="right">{t('dashboard.table_amount')}</TableCell>
+                                <TableCell align="right">{t('dashboard.table_avg_buy')}</TableCell>
+                                <TableCell align="right">{t('dashboard.table_current_price')}</TableCell>
+                                <TableCell align="right">{t('dashboard.table_pnl')}</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>

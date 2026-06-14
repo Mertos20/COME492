@@ -13,6 +13,7 @@ import {
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import CheckoutModal from "../components/CheckoutModal";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip } from "recharts";
+import { useTranslation } from "react-i18next";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -54,6 +55,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const [alertTarget, setAlertTarget] = useState("");
   const [alertCondition, setAlertCondition] = useState<"above" | "below">("above");
   const [alertLoading, setAlertLoading] = useState(false);
+  const { t } = useTranslation();
 
   useEffect(() => {
     if (markets.length > 0 && !order.symbol) {
@@ -66,7 +68,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
       const res = await api.get<PendingOrder[]>("/trade/orders");
       setPendingOrders(res.data);
     } catch (err) {
-      console.error("Bekleyen emirler yüklenemedi", err);
+      console.error(t('trading.error_orders'), err);
     }
   };
 
@@ -80,7 +82,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const handleDeposit = async () => {
     const amount = Number(depositAmount);
     if (!amount || amount <= 0) {
-      setError("Geçerli bir tutar girin.");
+      setError(t('trading.error_amount'));
       return;
     }
     setCheckoutOpen(true);
@@ -89,7 +91,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
     setError("");
-    setSuccess(`${formatMoney(Number(depositAmount))} başarıyla yüklendi!`);
+    setSuccess(t('trading.success_deposit', { amount: formatMoney(Number(depositAmount)) }));
     setDepositAmount("10000");
     onTradeComplete(); // Refresh balance from server
     setTimeout(() => setSuccess(""), 4000);
@@ -97,7 +99,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
 
   const handleSetAlert = async () => {
     if (!alertTarget || Number(alertTarget) <= 0) {
-      setError("Geçerli bir alarm fiyatı girin.");
+      setError(t('trading.error_alert_price'));
       return;
     }
     setAlertLoading(true);
@@ -109,11 +111,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         targetPrice: Number(alertTarget),
         condition: alertCondition
       });
-      setSuccess(`${order.symbol} için fiyat alarmı kuruldu!`);
+      setSuccess(t('trading.success_alert', { symbol: order.symbol }));
       setAlertTarget("");
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "Alarm kurulamadı.");
+      setError(err.response?.data?.message || t('trading.error_alert'));
     } finally {
       setAlertLoading(false);
     }
@@ -123,13 +125,13 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
     const activeSide = overrideSide || order.side;
     const quantity = Number(order.quantity);
     if (!quantity || quantity <= 0) {
-      setError("Geçerli bir miktar girin.");
+      setError(t('trading.error_quantity'));
       return;
     }
 
     const targetPrice = Number(order.targetPrice);
     if (order.type !== "market" && (!targetPrice || targetPrice <= 0)) {
-      setError("Geçerli bir hedef fiyat girin.");
+      setError(t('trading.error_target_price'));
       return;
     }
 
@@ -145,12 +147,12 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         type: order.type,
         targetPrice: order.type === "market" ? undefined : targetPrice
       });
-      setSuccess(res.data.message || "İşlem başarılı!");
+      setSuccess(res.data.message || t('trading.success_trade'));
       onTradeComplete();
       loadOrders(); // Refresh orders if it was a limit/stop order
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "İşlem başarısız.");
+      setError(err.response?.data?.message || t('trading.error_trade'));
     } finally {
       setLoading(false);
     }
@@ -159,11 +161,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const cancelOrder = async (id: string) => {
     try {
       await api.delete(`/trade/orders/${id}`);
-      setSuccess("Emir başarıyla iptal edildi.");
+      setSuccess(t('trading.success_cancel'));
       onTradeComplete(); // Refund updates balance
       loadOrders();
     } catch (err: any) {
-      setError(err.response?.data?.message || "Emir iptal edilemedi.");
+      setError(err.response?.data?.message || t('trading.error_cancel'));
     }
   };
 
@@ -187,7 +189,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
       <Grid item xs={12} md={8}>
         <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
-            <SwapHoriz color="primary" /> Hızlı Al/Sat
+            <SwapHoriz color="primary" /> {t('trading.quick_trade')}
             <Button
               size="small"
               variant="outlined"
@@ -198,7 +200,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
               startIcon={<Fullscreen />}
               sx={{ ml: 'auto', borderColor: 'rgba(255,255,255,0.1)', color: '#00d4ff', '&:hover': { borderColor: '#00d4ff', background: 'rgba(0,212,255,0.1)' } }}
             >
-              Zen Modu
+              {t('trading.zen_mode')}
             </Button>
           </Typography>
 
@@ -220,7 +222,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   '&:hover': { background: 'rgba(16, 185, 129, 0.1)' }
                 }}
               >
-                AL (BUY)
+                {t('trading.buy')}
               </ToggleButton>
               <ToggleButton 
                 value="sell" 
@@ -233,7 +235,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   '&:hover': { background: 'rgba(239, 68, 68, 0.1)' }
                 }}
               >
-                SAT (SELL)
+                {t('trading.sell')}
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -241,11 +243,11 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
           <Grid container spacing={3}>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth variant="outlined">
-                <InputLabel>Ürün</InputLabel>
+                <InputLabel>{t('trading.instrument')}</InputLabel>
                 <Select
                   value={order.symbol}
                   onChange={(e) => setOrder({ ...order, symbol: e.target.value })}
-                  label="Ürün"
+                  label={t('trading.instrument')}
                 >
                   {markets.map((m) => (
                     <MenuItem key={m.symbol} value={m.symbol}>
@@ -260,15 +262,15 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             </Grid>
             <Grid item xs={12} sm={6}>
               <FormControl fullWidth variant="outlined">
-                <InputLabel>Emir Tipi</InputLabel>
+                <InputLabel>{t('trading.order_type')}</InputLabel>
                 <Select
                   value={order.type}
                   onChange={(e) => setOrder({ ...order, type: e.target.value as any })}
-                  label="Emir Tipi"
+                  label={t('trading.order_type')}
                 >
-                  <MenuItem value="market">Piyasa (Market)</MenuItem>
-                  <MenuItem value="limit">Limit (Hedef Fiyat)</MenuItem>
-                  <MenuItem value="stop">Stop-Loss (Zarar Kes)</MenuItem>
+                  <MenuItem value="market">{t('trading.type_market')}</MenuItem>
+                  <MenuItem value="limit">{t('trading.type_limit')}</MenuItem>
+                  <MenuItem value="stop">{t('trading.type_stop')}</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -276,7 +278,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             <Grid item xs={12} sm={order.type !== "market" ? 6 : 12}>
               <TextField
                 fullWidth
-                label="Miktar"
+                label={t('trading.quantity')}
                 type="number"
                 value={order.quantity}
                 onChange={(e) => setOrder({ ...order, quantity: e.target.value })}
@@ -290,7 +292,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
               <Grid item xs={12} sm={6}>
                 <TextField
                   fullWidth
-                  label="Hedef Fiyat (TRY)"
+                  label={t('trading.target_price')}
                   type="number"
                   value={order.targetPrice}
                   onChange={(e) => setOrder({ ...order, targetPrice: e.target.value })}
@@ -305,12 +307,12 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
           <Box sx={{ mt: 4, p: 3, borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
             <Grid container alignItems="center" justifyContent="space-between">
               <Grid item>
-                <Typography variant="body2" color="text.secondary">Güncel Fiyat</Typography>
+                <Typography variant="body2" color="text.secondary">{t('trading.current_price')}</Typography>
                 <Typography variant="h6">{formatMoney(currentPrice)}</Typography>
               </Grid>
               <Grid item sx={{ textAlign: 'right' }}>
                 <Typography variant="body2" color="text.secondary">
-                  {order.type === "market" ? "Tahmini Toplam Tutar" : "Rezerve Edilecek Tutar"}
+                  {order.type === "market" ? t('trading.est_total') : t('trading.reserved_amount')}
                 </Typography>
                 <Typography variant="h5" sx={{ color: isBuy ? '#10b981' : '#ef4444', fontWeight: 800 }}>
                   {!isNaN(estimatedTotal) && estimatedTotal > 0 ? formatMoney(estimatedTotal) : "0,00 ₺"}
@@ -340,7 +342,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 }
               }}
             >
-              {loading ? <CircularProgress size={24} color="inherit" /> : (isBuy ? "Satın Al" : "Sat")}
+              {loading ? <CircularProgress size={24} color="inherit" /> : (isBuy ? t('trading.btn_buy') : t('trading.btn_sell'))}
             </Button>
           </Box>
 
@@ -350,21 +352,21 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
 
         {/* Active Orders Section */}
         <Paper sx={{ mt: 4, p: 3, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
-          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>Bekleyen Emirler</Typography>
+          <Typography variant="h6" sx={{ mb: 2, fontWeight: 700 }}>{t('trading.pending_orders')}</Typography>
           {pendingOrders.length === 0 ? (
-            <Typography variant="body2" color="text.secondary">Bekleyen açık emriniz bulunmuyor.</Typography>
+            <Typography variant="body2" color="text.secondary">{t('trading.no_orders')}</Typography>
           ) : (
             <TableContainer>
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>Tarih</TableCell>
-                    <TableCell>Ürün</TableCell>
-                    <TableCell>İşlem</TableCell>
-                    <TableCell>Tip</TableCell>
-                    <TableCell align="right">Hedef Fiyat</TableCell>
-                    <TableCell align="right">Miktar</TableCell>
-                    <TableCell align="center">İptal</TableCell>
+                    <TableCell>{t('trading.table_date')}</TableCell>
+                    <TableCell>{t('trading.table_instrument')}</TableCell>
+                    <TableCell>{t('trading.table_action')}</TableCell>
+                    <TableCell>{t('trading.table_type')}</TableCell>
+                    <TableCell align="right">{t('trading.table_target')}</TableCell>
+                    <TableCell align="right">{t('trading.table_quantity')}</TableCell>
+                    <TableCell align="center">{t('trading.table_cancel')}</TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>
@@ -374,10 +376,10 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                       <TableCell sx={{ fontWeight: 600 }}>{po.symbol}</TableCell>
                       <TableCell>
                         <Typography variant="body2" sx={{ color: po.side === "buy" ? "success.main" : "error.main", fontWeight: 700 }}>
-                          {po.side === "buy" ? "AL" : "SAT"}
+                          {po.side === "buy" ? t('trading.table_action_buy') : t('trading.table_action_sell')}
                         </Typography>
                       </TableCell>
-                      <TableCell>{po.type.toUpperCase()}</TableCell>
+                      <TableCell>{t(`trading.type_${po.type}`)}</TableCell>
                       <TableCell align="right">{formatMoney(po.targetPrice)}</TableCell>
                       <TableCell align="right">{po.quantity}</TableCell>
                       <TableCell align="center">
@@ -404,14 +406,14 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             <AccountBalanceWallet sx={{ fontSize: 32, color: '#00d4ff' }} />
           </Box>
           <Typography variant="subtitle2" color="text.secondary" sx={{ textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-            Kullanılabilir Bakiye
+            {t('trading.available_balance')}
           </Typography>
           <Typography variant="h3" sx={{ mt: 1, mb: 4, fontWeight: 800, background: 'linear-gradient(90deg, #fff, #94a3b8)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
             {formatMoney(balance)}
           </Typography>
 
           <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary', textAlign: 'left' }}>
-            Bakiye Yükle
+            {t('trading.load_balance')}
           </Typography>
           <TextField
             fullWidth
@@ -438,7 +440,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
               }
             }}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : "Bakiye Ekle"}
+            {loading ? <CircularProgress size={24} color="inherit" /> : t('trading.add_balance')}
           </Button>
         </Paper>
 
@@ -446,28 +448,28 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         <Paper sx={{ mt: 3, p: 3, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
             <NotificationsActive sx={{ color: '#f59e0b' }} />
-            <Typography variant="h6" sx={{ fontWeight: 700 }}>Fiyat Alarmı</Typography>
+            <Typography variant="h6" sx={{ fontWeight: 700 }}>{t('trading.price_alert')}</Typography>
           </Box>
           <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-            {order.symbol} fiyatı belirlediğiniz seviyeye geldiğinde bildirim alın.
+            {t('trading.alert_desc', { symbol: order.symbol })}
           </Typography>
           
           <FormControl fullWidth size="small" sx={{ mb: 2 }}>
-            <InputLabel>Koşul</InputLabel>
+            <InputLabel>{t('trading.condition')}</InputLabel>
             <Select
               value={alertCondition}
               onChange={(e) => setAlertCondition(e.target.value as any)}
-              label="Koşul"
+              label={t('trading.condition')}
             >
-              <MenuItem value="above">Fiyat Üstüne Çıkarsa</MenuItem>
-              <MenuItem value="below">Fiyat Altına Düşerse</MenuItem>
+              <MenuItem value="above">{t('trading.condition_above')}</MenuItem>
+              <MenuItem value="below">{t('trading.condition_below')}</MenuItem>
             </Select>
           </FormControl>
           
           <TextField
             fullWidth
             size="small"
-            label="Hedef Fiyat (TRY)"
+            label={t('trading.target_price')}
             type="number"
             value={alertTarget}
             onChange={(e) => setAlertTarget(e.target.value)}
@@ -486,7 +488,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
               '&:hover': { background: 'linear-gradient(135deg, #d97706 0%, #b45309 100%)' }
             }}
           >
-            {alertLoading ? <CircularProgress size={24} color="inherit" /> : "Alarm Kur"}
+            {alertLoading ? <CircularProgress size={24} color="inherit" /> : t('trading.set_alert')}
           </Button>
         </Paper>
       </Grid>
@@ -516,7 +518,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
               <Box sx={{ textAlign: 'right' }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Kullanılabilir Bakiye</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>{t('trading.available_balance')}</Typography>
                 <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance)}</Typography>
               </Box>
               <IconButton onClick={() => setZenMode(false)} sx={{ color: 'text.secondary', background: 'rgba(255,255,255,0.05)', '&:hover': { color: '#fff', background: 'rgba(239, 68, 68, 0.2)' } }}>
@@ -541,7 +543,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 <ChartTooltip
                   contentStyle={{ backgroundColor: 'rgba(2,6,23,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12 }}
                   itemStyle={{ color: chartColor, fontWeight: 900, fontSize: '1.2rem' }}
-                  formatter={(val: number) => [formatMoney(val), 'Fiyat']}
+                  formatter={(val: number) => [formatMoney(val), t('trading.tooltip_price')]}
                   labelStyle={{ display: 'none' }}
                 />
                 <Area type="monotone" dataKey="price" stroke={chartColor} strokeWidth={6} fill="url(#zenGradient)" isAnimationActive={false} />
@@ -554,7 +556,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             {/* Inputs */}
             <Box sx={{ flex: 1, display: 'flex', gap: 3 }}>
               <TextField
-                label="Miktar"
+                label={t('trading.quantity')}
                 type="number"
                 variant="filled"
                 value={order.quantity}

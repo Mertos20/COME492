@@ -4,6 +4,7 @@ import { api } from "../api";
 import type { AuthUser } from "../types";
 import { Container, Grid, Card, CardHeader, CardContent, CardActions, Typography, Button, CircularProgress, Alert, Box, List, ListItem, ListItemIcon, ListItemText, Chip } from "@mui/material";
 import { Check, Star, WorkspacePremium } from '@mui/icons-material';
+import { useTranslation } from "react-i18next";
 
 interface PricingPlan { tier: string; name: string; price: number; description: string; }
 
@@ -17,11 +18,8 @@ interface SubscriptionPageProps {
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
 
-const planFeatures: Record<string, string[]> = {
-  bronze: ["Bronze uzman danışmanlık", "Basit piyasa analizleri", "Haftalık raporlar"],
-  silver: ["Silver uzman danışmanlık", "Detaylı piyasa analizleri", "Günlük raporlar", "Özel tavsiyeler"],
-  gold: ["Gold uzman danışmanlık", "Kapsamlı piyasa analizleri", "Gerçek zamanlı destek", "Kişiselleştirilmiş yatırım stratejileri", "Özel etkinliklere davet"],
-};
+// Will use translation inside the component now
+// const planFeatures: Record<string, string[]> = { ... }
 
 const tierGradients: Record<string, { bg: string; border: string; accent: string; glow: string }> = {
   bronze: { bg: 'linear-gradient(135deg, rgba(205,127,50,0.08) 0%, rgba(205,127,50,0.02) 100%)', border: 'rgba(205,127,50,0.25)', accent: '#cd7f32', glow: '0 0 30px rgba(205,127,50,0.15)' },
@@ -35,19 +33,20 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
+  const { t } = useTranslation();
 
   useEffect(() => {
     const loadPlans = async () => {
       try {
         const res = await api.get<{ plans: PricingPlan[] }>("/auth/pricing");
         setPlans(res.data.plans);
-      } catch { setError("Fiyatlandırma planları yüklenemedi."); }
+      } catch { setError(t("subscription.error_load")); }
     };
     loadPlans();
   }, []);
 
   if (!user || user.role !== "user") {
-    return <Alert severity="error">Bu sayfaya erişim yetkiniz bulunmamaktadır.</Alert>;
+    return <Alert severity="error">{t("subscription.error_auth")}</Alert>;
   }
 
   const handlePurchase = async (tier: string) => {
@@ -59,7 +58,7 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
       if (onBalanceChange) onBalanceChange(res.data.balance);
       setTimeout(() => navigate("/"), 2000);
     } catch (err: any) {
-      setError(err.response?.data?.message || "İşlem başarısız oldu.");
+      setError(err.response?.data?.message || t("subscription.error_transaction"));
     } finally { setLoading(false); }
   };
 
@@ -90,10 +89,10 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
           WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent',
           mb: 1,
         }}>
-          portfol.io Premium
+          {t("subscription.title_premium")}
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 500, mx: 'auto' }}>
-          Uzman danışmanlık ve gelişmiş analiz araçlarına erişim için üyeliğinizi yükseltin.
+          {t("subscription.subtitle")}
         </Typography>
       </Box>
 
@@ -108,6 +107,8 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
           const canUpgrade = planLevel > currentUserLevel;
           const style = tierGradients[plan.tier] || tierGradients.bronze;
           const isGold = plan.tier === 'gold';
+          // Cast the return value of t to string[] using returnObjects: true
+          const features = t(`subscription.features.${plan.tier}`, { returnObjects: true }) as string[];
 
           return (
             <Grid key={plan.tier} item xs={12} md={4}>
@@ -122,14 +123,14 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
                 '&:hover': { boxShadow: style.glow, transform: 'translateY(-4px)' },
               }}>
                 {isCurrentPlan && (
-                  <Chip label="Mevcut Plan" size="small" sx={{
+                  <Chip label={t("subscription.current_plan")} size="small" sx={{
                     position: 'absolute', top: -12, right: 16,
                     background: `linear-gradient(135deg, ${style.accent}, ${style.accent}cc)`,
                     color: '#0a0e27', fontWeight: 700, fontSize: '0.7rem',
                   }} />
                 )}
                 {isGold && !isCurrentPlan && (
-                  <Chip icon={<Star sx={{ fontSize: '0.9rem !important', color: '#0a0e27 !important' }} />} label="Popüler" size="small" sx={{
+                  <Chip icon={<Star sx={{ fontSize: '0.9rem !important', color: '#0a0e27 !important' }} />} label={t("subscription.popular")} size="small" sx={{
                     position: 'absolute', top: -12, left: 16,
                     background: 'linear-gradient(135deg, #ffd700, #ff8c00)',
                     color: '#0a0e27', fontWeight: 700, fontSize: '0.7rem',
@@ -140,10 +141,10 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
                   <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>{plan.description}</Typography>
                   <Box sx={{ display: 'flex', alignItems: 'baseline', mb: 3 }}>
                     <Typography variant="h3" sx={{ fontWeight: 900, color: 'text.primary' }}>{formatMoney(plan.price)}</Typography>
-                    <Typography variant="body2" sx={{ color: 'text.secondary', ml: 0.5 }}>/ay</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary', ml: 0.5 }}>{t("subscription.per_month")}</Typography>
                   </Box>
                   <List disablePadding>
-                    {(planFeatures[plan.tier] || []).map(line => (
+                    {(Array.isArray(features) ? features : []).map(line => (
                       <ListItem key={line} disableGutters sx={{ py: 0.5 }}>
                         <ListItemIcon sx={{ minWidth: 'auto', mr: 1.5 }}>
                           <Check sx={{ color: style.accent, fontSize: 18 }} />
@@ -164,12 +165,12 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
                       '&.Mui-disabled': { background: 'rgba(255,255,255,0.05)', color: 'rgba(255,255,255,0.3)' },
                     }}
                   >
-                    {loading ? <CircularProgress size={24} /> : (isCurrentPlan ? "Mevcut Plan" : (canUpgrade ? "Satın Al" : "Yükseltilemez"))}
+                    {loading ? <CircularProgress size={24} /> : (isCurrentPlan ? t("subscription.current_plan") : (canUpgrade ? t("subscription.btn_buy") : t("subscription.btn_cannot_upgrade")))}
                   </Button>
                 </CardActions>
                 {balance < plan.price && !isCurrentPlan && canUpgrade && (
                   <Alert severity="warning" sx={{ m: 2, mt: 0 }}>
-                    Yetersiz bakiye! {formatMoney(plan.price - balance)} daha eklemeniz gerekiyor.
+                    {t("subscription.insufficient_balance", { amount: formatMoney(plan.price - balance) })}
                   </Alert>
                 )}
               </Card>
@@ -183,7 +184,7 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
         p: 3, borderRadius: '16px', textAlign: 'center',
         background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)',
       }}>
-        <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1 }}>Mevcut Bakiyeniz</Typography>
+        <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1 }}>{t("subscription.current_balance")}</Typography>
         <Typography variant="h4" sx={{
           fontWeight: 800, mb: 2,
           background: 'linear-gradient(135deg, #00d4ff, #10b981)',
@@ -192,7 +193,7 @@ export default function SubscriptionPage({ user, balance, onUpgrade, onBalanceCh
           {formatMoney(balance)}
         </Typography>
         <Button variant="outlined" onClick={() => navigate("/load-balance")} sx={{ borderColor: 'rgba(0,212,255,0.3)', color: '#00d4ff' }}>
-          Bakiye Yükle
+          {t("subscription.btn_load_balance")}
         </Button>
       </Box>
     </Box>

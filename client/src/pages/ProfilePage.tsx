@@ -6,6 +6,7 @@ import {
   Dialog, DialogTitle, DialogContent, DialogActions, LinearProgress
 } from '@mui/material';
 import { Person, Email, Edit, Save, WorkspacePremium, Cancel, Lock, Memory, Contactless, VerifiedUser, RocketLaunch, Shield, GppGood, Fingerprint } from '@mui/icons-material';
+import { useTranslation, Trans } from 'react-i18next';
 
 interface ProfilePageProps {
   user: AuthUser | null;
@@ -42,8 +43,9 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
   const [passwordError, setPasswordError] = useState('');
   const [tilt, setTilt] = useState({ x: 0, y: 0, active: false });
   const [shine, setShine] = useState({ x: 50, y: 50 });
+  const { t } = useTranslation();
 
-  if (!user) return <Alert severity="warning">Giriş yapmanız gerekiyor.</Alert>;
+  if (!user) return <Alert severity="warning">{t('profile.error_login')}</Alert>;
 
   const tier = tierColors[user.membership] || tierColors.free;
   const vipStyle = vipStyles[user.membership] || vipStyles.free;
@@ -72,7 +74,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
       setSuccess(res.data.message);
       setEditing(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Profil güncellenemedi');
+      setError(err.response?.data?.message || t('profile.error_update'));
     } finally {
       setLoading(false);
     }
@@ -87,7 +89,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
       setSuccess(res.data.message);
       setCancelDialog(false);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Üyelik iptal edilemedi');
+      setError(err.response?.data?.message || t('profile.error_cancel'));
     } finally {
       setCancelLoading(false);
     }
@@ -99,19 +101,19 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
     setPasswordSuccess('');
 
     if (!passwordData.currentPassword || !passwordData.newPassword) {
-      setPasswordError('Tüm alanlar zorunludur');
+      setPasswordError(t('profile.error_password_fields'));
       setPasswordLoading(false);
       return;
     }
 
     if (passwordData.newPassword.length < 6) {
-      setPasswordError('Yeni şifre en az 6 karakter olmalıdır');
+      setPasswordError(t('profile.error_password_length'));
       setPasswordLoading(false);
       return;
     }
 
     if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setPasswordError('Yeni şifreler eşleşmiyor');
+      setPasswordError(t('profile.error_password_match'));
       setPasswordLoading(false);
       return;
     }
@@ -124,7 +126,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
       setPasswordSuccess(res.data.message);
       setPasswordData({ currentPassword: '', newPassword: '', confirmPassword: '' });
     } catch (err: any) {
-      setPasswordError(err.response?.data?.message || 'Şifre değiştirilemedi');
+      setPasswordError(err.response?.data?.message || t('profile.error_password_change'));
     } finally {
       setPasswordLoading(false);
     }
@@ -146,8 +148,8 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 3 }}>
         <Person sx={{ color: '#00d4ff', fontSize: 28 }} />
         <Box>
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>Profil</Typography>
-          <Typography variant="body2" sx={{ color: 'text.secondary' }}>Hesap bilgilerinizi yönetin</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('profile.title')}</Typography>
+          <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('profile.subtitle')}</Typography>
         </Box>
       </Box>
 
@@ -206,7 +208,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
                   <Box>
                     <Typography variant="caption" sx={{ color: vipStyle.text, opacity: 0.8, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      {user.role === 'expert' ? 'Expert Advisor' : 'VIP Trader'}
+                      {user.role === 'expert' ? t('profile.role_expert') : t('profile.role_trader')}
                     </Typography>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '1.1rem', color: vipStyle.text, textTransform: 'uppercase', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                       {user.fullName}
@@ -214,7 +216,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   </Box>
                   <Box sx={{ textAlign: 'right' }}>
                     <Typography variant="caption" sx={{ color: vipStyle.text, opacity: 0.8, fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                      Tier
+                      {t('profile.tier_label')}
                     </Typography>
                     <Typography sx={{ fontFamily: 'monospace', fontSize: '1.1rem', color: vipStyle.text, textTransform: 'uppercase', fontWeight: 800, textShadow: '0 2px 4px rgba(0,0,0,0.2)' }}>
                       {user.membership}
@@ -233,7 +235,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
             borderRadius: '20px'
           }}>
             <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 2, textTransform: 'uppercase', letterSpacing: '0.05em', fontSize: '0.65rem' }}>
-              Kazanım & Rozetler
+              {t('profile.achievements_title')}
             </Typography>
             <Grid container spacing={2}>
               <Grid item xs={4}>
@@ -241,7 +243,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   <Box sx={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                     <VerifiedUser sx={{ color: '#10b981', fontSize: 20 }} />
                   </Box>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2 }}>Doğrulanmış<br/>Kimlik</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2, whiteSpace: 'pre-line' }}>{t('profile.badge_verified')}</Typography>
                 </Box>
               </Grid>
               <Grid item xs={4}>
@@ -249,7 +251,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   <Box sx={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                     <Shield sx={{ color: tier.color, fontSize: 20 }} />
                   </Box>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2 }}>{user.membership === 'free' ? 'Standart' : 'Elit'}<br/>Yatırımcı</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2, whiteSpace: 'pre-line' }}>{user.membership === 'free' ? t('profile.badge_standard') : t('profile.badge_elite')}</Typography>
                 </Box>
               </Grid>
               <Grid item xs={4}>
@@ -257,7 +259,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   <Box sx={{ width: 36, height: 36, borderRadius: '50%', background: 'rgba(124,58,237,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 1 }}>
                     <RocketLaunch sx={{ color: '#7c3aed', fontSize: 20 }} />
                   </Box>
-                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2 }}>Erken<br/>Erişim</Typography>
+                  <Typography variant="caption" sx={{ fontWeight: 700, color: '#e2e8f0', lineHeight: 1.2, whiteSpace: 'pre-line' }}>{t('profile.badge_early')}</Typography>
                 </Box>
               </Grid>
             </Grid>
@@ -271,11 +273,10 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
               border: '1px solid rgba(239,68,68,0.12)',
             }}>
               <Typography variant="subtitle2" sx={{ fontWeight: 700, color: '#ef4444', mb: 1 }}>
-                Üyelik İptali
+                {t('profile.cancel_title')}
               </Typography>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2, lineHeight: 1.6 }}>
-                Mevcut {user.membership.toUpperCase()} üyeliğinizi iptal edip ücretsiz plana geçebilirsiniz.
-                Bu işlem uzman danışman erişiminizi kaldırır.
+                {t('profile.cancel_desc', { membership: user.membership.toUpperCase() })}
               </Typography>
               <Button
                 variant="outlined"
@@ -284,7 +285,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                 onClick={() => setCancelDialog(true)}
                 sx={{ fontWeight: 600 }}
               >
-                Üyeliği İptal Et
+                {t('profile.btn_cancel_membership')}
               </Button>
             </Paper>
           )}
@@ -330,7 +331,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                     }}
                   />
                   <Chip
-                    label={user.role === 'expert' ? 'Uzman' : 'Kullanıcı'}
+                    label={user.role === 'expert' ? t('profile.chip_expert') : t('profile.chip_user')}
                     size="small"
                     sx={{
                       fontWeight: 600, fontSize: '0.65rem',
@@ -350,7 +351,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   '&:hover': { borderColor: 'rgba(0,212,255,0.3)', color: '#00d4ff' },
                 }}
               >
-                {editing ? 'İptal' : 'Düzenle'}
+                {editing ? t('profile.btn_cancel') : t('profile.btn_edit')}
               </Button>
             </Box>
 
@@ -359,7 +360,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
             <Stack spacing={2.5}>
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>
-                  Ad Soyad
+                  {t('profile.label_name')}
                 </Typography>
                 {editing ? (
                   <TextField
@@ -374,7 +375,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
 
               <Box>
                 <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, mb: 0.5, display: 'block', textTransform: 'uppercase', fontSize: '0.65rem', letterSpacing: '0.05em' }}>
-                  E-posta Adresi
+                  {t('profile.label_email')}
                 </Typography>
                 {editing ? (
                   <TextField
@@ -397,7 +398,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                     '&:hover': { background: 'linear-gradient(135deg, #33ddff 0%, #9655f5 100%)' },
                   }}
                 >
-                  Kaydet
+                  {t('profile.btn_save')}
                 </Button>
               )}
             </Stack>
@@ -411,7 +412,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
           }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2.5 }}>
               <Lock sx={{ color: '#7c3aed', fontSize: 20 }} />
-              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>Şifre Değiştir</Typography>
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>{t('profile.password_title')}</Typography>
             </Box>
 
             {passwordSuccess && <Alert severity="success" sx={{ mb: 2 }} onClose={() => setPasswordSuccess('')}>{passwordSuccess}</Alert>}
@@ -419,19 +420,19 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
 
             <Stack spacing={2}>
               <TextField
-                fullWidth size="small" type="password" label="Mevcut Şifre"
+                fullWidth size="small" type="password" label={t('profile.label_current_password')}
                 value={passwordData.currentPassword}
                 onChange={(e) => setPasswordData(p => ({ ...p, currentPassword: e.target.value }))}
                 slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
               />
               <TextField
-                fullWidth size="small" type="password" label="Yeni Şifre"
+                fullWidth size="small" type="password" label={t('profile.label_new_password')}
                 value={passwordData.newPassword}
                 onChange={(e) => setPasswordData(p => ({ ...p, newPassword: e.target.value }))}
                 slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
               />
               <TextField
-                fullWidth size="small" type="password" label="Yeni Şifre (Tekrar)"
+                fullWidth size="small" type="password" label={t('profile.label_confirm_password')}
                 value={passwordData.confirmPassword}
                 onChange={(e) => setPasswordData(p => ({ ...p, confirmPassword: e.target.value }))}
                 slotProps={{ input: { startAdornment: <Lock sx={{ mr: 1, color: 'text.secondary', fontSize: '1.1rem' }} /> } }}
@@ -447,7 +448,7 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
                   '&:hover': { background: 'linear-gradient(135deg, #6d28d9 0%, #2563eb 100%)' },
                 }}
               >
-                Şifreyi Değiştir
+                {t('profile.btn_change_password')}
               </Button>
             </Stack>
           </Paper>
@@ -463,9 +464,9 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
               <Box>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <GppGood sx={{ color: '#10b981', fontSize: 24 }} />
-                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10b981' }}>Kriptografik Güvenlik Merkezi</Typography>
+                  <Typography variant="subtitle1" sx={{ fontWeight: 800, color: '#10b981' }}>{t('profile.security_title')}</Typography>
                 </Box>
-                <Typography variant="body2" sx={{ color: 'text.secondary' }}>Hesabınız siber tehditlere karşı korunuyor.</Typography>
+                <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('profile.security_desc')}</Typography>
               </Box>
               <Box sx={{ 
                 width: 48, height: 48, borderRadius: '50%', background: 'rgba(16,185,129,0.1)', 
@@ -478,8 +479,8 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
             
             <Box sx={{ mb: 3 }}>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>Kalkan Skoru</Typography>
-                <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 800 }}>%85 Yüksek Güvenlik</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700 }}>{t('profile.shield_score')}</Typography>
+                <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 800 }}>{t('profile.shield_status')}</Typography>
               </Box>
               <LinearProgress variant="determinate" value={85} sx={{ 
                 height: 8, borderRadius: 4, background: 'rgba(255,255,255,0.05)',
@@ -489,9 +490,9 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
 
             <Grid container spacing={2}>
               {[
-                { label: 'E-posta Doğrulama', status: 'Aktif', color: '#10b981' },
-                { label: 'Cihaz Şifrelemesi', status: 'Aktif', color: '#10b981' },
-                { label: 'İki Aşamalı Doğrulama (2FA)', status: 'Pasif (Önerilir)', color: '#f59e0b' },
+                { label: t('profile.sec_email'), status: t('profile.status_active'), color: '#10b981' },
+                { label: t('profile.sec_device'), status: t('profile.status_active'), color: '#10b981' },
+                { label: t('profile.sec_2fa'), status: t('profile.status_passive'), color: '#f59e0b' },
               ].map((sec, i) => (
                 <Grid item xs={12} sm={4} key={i}>
                   <Box sx={{ p: 1.5, borderRadius: '12px', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.05)' }}>
@@ -507,22 +508,21 @@ export default function ProfilePage({ user, onProfileUpdate, onMembershipCancel 
 
       {/* Cancel Confirmation Dialog */}
       <Dialog open={cancelDialog} onClose={() => setCancelDialog(false)}>
-        <DialogTitle sx={{ fontWeight: 700 }}>Üyelik İptali</DialogTitle>
+        <DialogTitle sx={{ fontWeight: 700 }}>{t('profile.dialog_cancel_title')}</DialogTitle>
         <DialogContent>
           <Typography variant="body2" sx={{ color: 'text.secondary' }}>
-            {user.membership.toUpperCase()} üyeliğinizi iptal etmek istediğinize emin misiniz?
-            Uzman danışman erişiminiz kaldırılacaktır.
+            {t('profile.dialog_cancel_desc', { membership: user.membership.toUpperCase() })}
           </Typography>
         </DialogContent>
         <DialogActions sx={{ p: 2 }}>
-          <Button onClick={() => setCancelDialog(false)} sx={{ color: 'text.secondary' }}>Vazgeç</Button>
+          <Button onClick={() => setCancelDialog(false)} sx={{ color: 'text.secondary' }}>{t('profile.dialog_btn_no')}</Button>
           <Button
             onClick={handleCancelMembership}
             color="error" variant="contained"
             disabled={cancelLoading}
             startIcon={cancelLoading ? <CircularProgress size={16} /> : undefined}
           >
-            Evet, İptal Et
+            {t('profile.dialog_btn_yes')}
           </Button>
         </DialogActions>
       </Dialog>

@@ -4,9 +4,11 @@ import { TrendingUp, TrendingDown, Radar, Leaderboard, OfflineBolt, AccessTime }
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { api } from "../api";
 import { useMarket } from "../contexts/MarketContext";
+import { useTranslation } from "react-i18next";
 
 export default function GamePage() {
   const { instruments } = useMarket();
+  const { t } = useTranslation();
   const [selectedSymbol, setSelectedSymbol] = useState("BTCUSDT");
   const [historyState, setHistoryState] = useState<{symbol: string, data: {time: string, price: number}[]}>({ symbol: "BTCUSDT", data: [] });
 
@@ -117,23 +119,23 @@ export default function GamePage() {
     <Box sx={{ maxWidth: 1400, mx: "auto", py: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
         <Radar sx={{ color: "#00d4ff", fontSize: 32 }} />
-        <Typography variant="h4" sx={{ fontWeight: 800 }}>Piyasa Tahmin Modülü</Typography>
+        <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('game.title')}</Typography>
       </Box>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 4 }}>
-        Gerçek zamanlı veri akışı üzerinden kısa vadeli piyasa yönünü analiz edin, doğru tahminlerle isabet serisi yakalayıp global sıralamada yükselin. (Veriler 15 saniyede bir güncellenir)
+        {t('game.description')}
       </Typography>
 
       <Grid container spacing={3}>
         {/* Score Board */}
         <Grid item xs={12} sm={6}>
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', textAlign: 'center' }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>PERFORMANS SKORU</Typography>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>{t('game.score')}</Typography>
             <Typography variant="h4" sx={{ fontWeight: 800, color: '#e2e8f0' }}>{score}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6}>
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', textAlign: 'center' }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>İSABET SERİSİ</Typography>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>{t('game.streak')}</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
               <OfflineBolt sx={{ color: streak > 2 ? '#00d4ff' : 'text.secondary', fontSize: 32, animation: streak > 2 ? 'pulse 2s infinite' : 'none' }} />
               <Typography variant="h4" sx={{ fontWeight: 800, color: streak > 2 ? '#00d4ff' : 'text.primary' }}>x{streak}</Typography>
@@ -155,10 +157,10 @@ export default function GamePage() {
                   '.MuiSelect-icon': { color: '#e2e8f0' }
                 }}
               >
-                <MenuItem value="BTCUSDT">Bitcoin (BTC)</MenuItem>
-                <MenuItem value="ETHUSDT">Ethereum (ETH)</MenuItem>
-                <MenuItem value="XAUUSD">Ons Altın (XAU)</MenuItem>
-                <MenuItem value="USDTRY">Dolar/TL (USD)</MenuItem>
+                <MenuItem value="BTCUSDT">{t('game.inst_btc')}</MenuItem>
+                <MenuItem value="ETHUSDT">{t('game.inst_eth')}</MenuItem>
+                <MenuItem value="XAUUSD">{t('game.inst_xau')}</MenuItem>
+                <MenuItem value="USDTRY">{t('game.inst_usd')}</MenuItem>
               </Select>
               <Typography variant="h5" sx={{ fontWeight: 800, color: '#10b981' }}>
                 {currentInst ? formatMoney(currentInst.price, currentInst.symbol) : '...'}
@@ -175,10 +177,10 @@ export default function GamePage() {
                 animation: 'scaleIn 0.3s ease-out', boxShadow: `0 10px 40px ${gameResult.status === 'won' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
               }}>
                 <Typography variant="h5" sx={{ fontWeight: 900, color: gameResult.status === 'won' ? '#10b981' : '#ef4444', textAlign: 'center', letterSpacing: '0.05em' }}>
-                  {gameResult.status === 'won' ? 'İSABETLİ İŞLEM' : 'BAŞARISIZ İŞLEM'}
+                  {gameResult.status === 'won' ? t('game.trade_won') : t('game.trade_lost')}
                 </Typography>
                 <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary', textAlign: 'center', mt: 0.5 }}>
-                  {gameResult.points > 0 ? '+' : ''}{gameResult.points} Puan
+                  {gameResult.points > 0 ? '+' : ''}{gameResult.points} {t('game.points')}
                 </Typography>
               </Box>
             )}
@@ -219,13 +221,13 @@ export default function GamePage() {
                 '&.Mui-disabled': { background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.05)' }
               }}
             >
-              <TrendingUp sx={{ mr: 1, fontSize: 24 }} /> LONG (ALIM)
+              <TrendingUp sx={{ mr: 1, fontSize: 24 }} /> {t('game.btn_long')}
             </Button>
 
             {isWaitingTick ? (
               <Box sx={{ px: 2, textAlign: 'center' }}>
                 <CircularProgress size={24} sx={{ color: '#7c3aed', mb: 1 }} />
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', lineHeight: 1.2, letterSpacing: '0.05em' }}>VERİ AKIŞI<br/>BEKLENİYOR</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', lineHeight: 1.2, letterSpacing: '0.05em', whiteSpace: 'pre-line' }}>{t('game.waiting_data')}</Typography>
               </Box>
             ) : (
               <Box sx={{ px: 2, textAlign: 'center' }}>
@@ -248,7 +250,7 @@ export default function GamePage() {
                 '&.Mui-disabled': { background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.05)' }
               }}
             >
-              <TrendingDown sx={{ mr: 1, fontSize: 24 }} /> SHORT (SATIM)
+              <TrendingDown sx={{ mr: 1, fontSize: 24 }} /> {t('game.btn_short')}
             </Button>
           </Box>
         </Grid>
@@ -258,12 +260,12 @@ export default function GamePage() {
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', height: '100%', minHeight: 400 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, pb: 2, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
               <Leaderboard sx={{ color: '#00d4ff', fontSize: 24 }} />
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>Global Sıralama</Typography>
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>{t('game.global_ranking')}</Typography>
             </Box>
             <List sx={{ p: 0 }}>
               {leaderboard.length === 0 ? (
                 <Typography variant="body2" sx={{ color: 'text.secondary', textAlign: 'center', py: 4 }}>
-                  Henüz kimse skor kaydetmedi. İlk sen ol!
+                  {t('game.no_scores')}
                 </Typography>
               ) : (
                 leaderboard.map((player, index) => (

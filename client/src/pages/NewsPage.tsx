@@ -3,6 +3,7 @@ import { api } from "../api";
 import type { NewsItem } from "../types";
 import { Alert, Box, Button, Card, CardActionArea, CardContent, CardMedia, CardActions, CircularProgress, Chip, Grid, Stack, TextField, Typography } from "@mui/material";
 import { Article, Language, Search, AutoFixHigh, TrendingUp, TrendingDown, Remove } from "@mui/icons-material";
+import { useTranslation } from "react-i18next";
 
 interface NewsResponse { source: "cache" | "live"; items: NewsItem[]; warning?: string; providerErrors?: string[]; }
 
@@ -15,7 +16,8 @@ export default function NewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
-  const [sentiments, setSentiments] = useState<Record<string, { loading: boolean; result?: "POZİTİF" | "NEGATİF" | "NÖTR" }>>({});
+  const [sentiments, setSentiments] = useState<Record<string, { loading: boolean; result?: string }>>({});
+  const { t } = useTranslation();
 
   useEffect(() => {
     const loadNews = async () => {
@@ -27,7 +29,7 @@ export default function NewsPage() {
         if (res.data.warning) {
           setWarning(res.data.warning);
         }
-      } catch { setError("Finans haberleri yuklenemedi."); }
+      } catch { setError(t('news.error_fetch')); }
       finally { setLoading(false); }
     };
     loadNews();
@@ -44,10 +46,15 @@ export default function NewsPage() {
     
     try {
       const res = await api.post("/ai/analyze-news", { title: item.title, summary: item.summary });
-      setSentiments(prev => ({ ...prev, [key]: { loading: false, result: res.data.sentiment } }));
+      const rawSentiment = res.data.sentiment;
+      let mappedSentiment = rawSentiment;
+      if (rawSentiment === "POZİTİF") mappedSentiment = t('news.sentiment_positive');
+      else if (rawSentiment === "NEGATİF") mappedSentiment = t('news.sentiment_negative');
+      else if (rawSentiment === "NÖTR") mappedSentiment = t('news.sentiment_neutral');
+      setSentiments(prev => ({ ...prev, [key]: { loading: false, result: mappedSentiment } }));
     } catch (err) {
       console.error(err);
-      setSentiments(prev => ({ ...prev, [key]: { loading: false, result: "NÖTR" } }));
+      setSentiments(prev => ({ ...prev, [key]: { loading: false, result: t('news.sentiment_neutral') } }));
     }
   };
 
@@ -61,15 +68,15 @@ export default function NewsPage() {
       }}>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1 }}>
           <Article sx={{ color: '#3b82f6', fontSize: 28 }} />
-          <Typography variant="h4" sx={{ fontWeight: 800 }}>Finans Haberleri</Typography>
+          <Typography variant="h4" sx={{ fontWeight: 800 }}>{t('news.title')}</Typography>
         </Box>
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2.5 }}>
-          Borsa, kripto, emtia ve makro ekonomi başlıklarında güncel haber akışını takip edin.
+          {t('news.subtitle')}
         </Typography>
 
       <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
-        {[{ v: "tr" as const, l: "🇹🇷 Türkçe" },
-          { v: "global" as const, l: "🌍 Yabancı" }
+        {[{ v: "tr" as const, l: t('news.lang_tr') },
+          { v: "global" as const, l: t('news.lang_global') }
         ].map(s => (
           <Chip key={s.v} label={s.l} clickable
             onClick={() => setScope(s.v)}
@@ -91,7 +98,7 @@ export default function NewsPage() {
       ) : error ? (
         <Alert severity="error">{error}</Alert>
       ) : !hasNews ? (
-        <Alert severity="info">Bu filtreye uygun haber bulunamadı.</Alert>
+        <Alert severity="info">{t('news.empty')}</Alert>
       ) : (
         <Grid container spacing={2}>
           {news.map((item, index) => (
@@ -140,13 +147,13 @@ export default function NewsPage() {
                       return (
                         <Chip
                           size="small"
-                          icon={sentiment.result === "POZİTİF" ? <TrendingUp /> : sentiment.result === "NEGATİF" ? <TrendingDown /> : <Remove />}
+                          icon={sentiment.result === t('news.sentiment_positive') ? <TrendingUp /> : sentiment.result === t('news.sentiment_negative') ? <TrendingDown /> : <Remove />}
                           label={sentiment.result}
                           sx={{
                             fontWeight: 700,
                             fontSize: '0.65rem',
-                            background: sentiment.result === "POZİTİF" ? 'rgba(16, 185, 129, 0.15)' : sentiment.result === "NEGATİF" ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.1)',
-                            color: sentiment.result === "POZİTİF" ? '#10b981' : sentiment.result === "NEGATİF" ? '#ef4444' : 'text.secondary',
+                            background: sentiment.result === t('news.sentiment_positive') ? 'rgba(16, 185, 129, 0.15)' : sentiment.result === t('news.sentiment_negative') ? 'rgba(239, 68, 68, 0.15)' : 'rgba(255,255,255,0.1)',
+                            color: sentiment.result === t('news.sentiment_positive') ? '#10b981' : sentiment.result === t('news.sentiment_negative') ? '#ef4444' : 'text.secondary',
                           }}
                         />
                       );
@@ -163,7 +170,7 @@ export default function NewsPage() {
                           '&:hover': { background: 'rgba(168, 85, 247, 0.2)' }
                         }}
                       >
-                        Yapay Zeka Analizi
+                        {t('news.ai_analyze')}
                       </Button>
                     );
                   })()}

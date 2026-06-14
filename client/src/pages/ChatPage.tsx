@@ -4,10 +4,12 @@ import { api } from "../api";
 import type { ChatMessage, ExpertProfile, AuthUser } from "../types";
 import { Grid, Paper, Typography, TextField, Button, CircularProgress, Alert, Tabs, Tab, Box, List, ListItem, ListItemText, ListItemAvatar, Avatar, Chip } from "@mui/material";
 import { Send, SmartToy, Person, Forum } from '@mui/icons-material';
+import { useTranslation } from "react-i18next";
 
 interface ChatPageProps { user: AuthUser | null; token: string | null; }
 
 export default function ChatPage({ user, token }: ChatPageProps) {
+  const { t } = useTranslation();
   const [activeTier, setActiveTier] = useState<"bronze" | "silver" | "gold">("bronze");
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -16,7 +18,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
   const [chatSocket, setChatSocket] = useState<Socket | null>(null);
   const [aiQuestion, setAiQuestion] = useState("");
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "ai"; content: string }[]>([
-    { role: "ai", content: "AI danışman burada. Piyasalar hakkında soru sorabilirsiniz." }
+    { role: "ai", content: t('chat.ai_greeting') }
   ]);
   const [loadingAi, setLoadingAi] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
@@ -64,7 +66,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
       setMessages((prev) => prev.some(i => i._id === savedRes.data._id) ? prev : [...prev, savedRes.data]);
       if (chatSocket?.connected) chatSocket.emit("chat:message", { ...payload, messageId: savedRes.data._id });
       setChatText("");
-    } catch { setSendError("Mesaj gönderilemedi. Lütfen tekrar deneyin."); }
+    } catch { setSendError(t('chat.error_send')); }
   };
 
   const askAI = async () => {
@@ -77,22 +79,22 @@ export default function ChatPage({ user, token }: ChatPageProps) {
       const res = await api.post<{ response: string }>("/ai/chat", { message: userMsg });
       setAiMessages(prev => [...prev, { role: "ai", content: res.data.response }]);
     } catch (err: any) {
-      const errMsg = err.response?.data?.message || "Üzgünüm, AI danışman şu an kullanılamıyor.";
+      const errMsg = err.response?.data?.message || t('chat.error_ai_unavailable');
       setAiMessages(prev => [...prev, { role: "ai", content: errMsg }]);
     } finally {
       setLoadingAi(false);
     }
   };
 
-  if (!user || user.role !== "user") return <Alert severity="warning">Bu sayfa sadece Kullanıcı paneli için erişilebilir.</Alert>;
+  if (!user || user.role !== "user") return <Alert severity="warning">{t('chat.error_user_only')}</Alert>;
 
   const canAccessExperts = user.membership !== "free";
   const tierExperts = experts.filter(e => e.expertTier === activeTier);
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Danışmanlar</Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>AI ve uzman danışmanlarla iletişime geçin</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>{t('chat.title')}</Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('chat.subtitle')}</Typography>
 
       <Grid container spacing={3}>
         {/* AI Chat */}
@@ -105,9 +107,9 @@ export default function ChatPage({ user, token }: ChatPageProps) {
             <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'linear-gradient(135deg, rgba(124,58,237,0.08) 0%, rgba(0,212,255,0.04) 100%)' }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                 <SmartToy sx={{ color: '#7c3aed' }} />
-                <Typography variant="h6" sx={{ fontWeight: 700 }}>AI Yatırım Danışmanı</Typography>
+                <Typography variant="h6" sx={{ fontWeight: 700 }}>{t('chat.ai_advisor_title')}</Typography>
               </Box>
-              <Typography variant="caption" sx={{ color: 'text.secondary' }}>Gemini AI tarafından destekleniyor</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary' }}>{t('chat.ai_powered_by')}</Typography>
             </Box>
             <Box sx={{ height: 400, p: 2, overflowY: 'auto', background: 'rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
               {aiMessages.map((msg, idx) => (
@@ -129,7 +131,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
                     border: `1px solid ${msg.role === 'user' ? 'rgba(0,212,255,0.2)' : 'rgba(255,255,255,0.06)'}`,
                   }}>
                     <Typography variant="caption" sx={{ color: msg.role === 'user' ? '#00d4ff' : '#7c3aed', fontWeight: 700, display: 'block', mb: 0.5 }}>
-                      {msg.role === 'user' ? user?.fullName || 'Siz' : 'AI Danışman'}
+                      {msg.role === 'user' ? user?.fullName || t('chat.you') : t('chat.ai_advisor')}
                     </Typography>
                     <Typography variant="body2" sx={{ color: 'text.primary', whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{msg.content}</Typography>
                   </Box>
@@ -146,7 +148,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
                     <SmartToy sx={{ fontSize: 18 }} />
                   </Avatar>
                   <Box sx={{ p: 2, borderRadius: '4px 16px 16px 16px', background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.06)' }}>
-                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>Düşünüyor...</Typography>
+                    <Typography variant="body2" sx={{ color: 'text.secondary' }}>{t('chat.thinking')}</Typography>
                   </Box>
                 </Box>
               )}
@@ -155,7 +157,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
             <Box component="form" onSubmit={(e) => { e.preventDefault(); askAI(); }}
               sx={{ display: 'flex', gap: 1, p: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
               <TextField fullWidth variant="outlined" size="small" value={aiQuestion} onChange={(e) => setAiQuestion(e.target.value)}
-                placeholder="Örn: Bitcoin için risk nasıl yönetilir?" disabled={loadingAi} />
+                placeholder={t('chat.placeholder_ai')} disabled={loadingAi} />
               <Button type="submit" variant="contained" disabled={loadingAi} sx={{
                 minWidth: 48, background: 'linear-gradient(135deg, #7c3aed, #00d4ff)',
                 '&:hover': { background: 'linear-gradient(135deg, #9655f5, #33ddff)' },
@@ -177,11 +179,11 @@ export default function ChatPage({ user, token }: ChatPageProps) {
               <Box sx={{ px: 2.5, py: 2, borderBottom: '1px solid rgba(255,255,255,0.06)', background: 'linear-gradient(135deg, rgba(0,212,255,0.06) 0%, rgba(16,185,129,0.04) 100%)' }}>
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                   <Forum sx={{ color: '#00d4ff' }} />
-                  <Typography variant="h6" sx={{ fontWeight: 700 }}>Uzman Mesajlaşma</Typography>
+                  <Typography variant="h6" sx={{ fontWeight: 700 }}>{t('chat.expert_messaging')}</Typography>
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1 }}>
-                  <Chip size="small" label={`${activeTier.toUpperCase()} kanalı`} sx={{ background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)', fontWeight: 600, fontSize: '0.65rem' }} />
-                  <Chip size="small" label={`${tierExperts.length} uzman aktif`} sx={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', fontWeight: 600, fontSize: '0.65rem' }} />
+                  <Chip size="small" label={t('chat.channel_tier', { tier: activeTier.toUpperCase() })} sx={{ background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)', fontWeight: 600, fontSize: '0.65rem' }} />
+                  <Chip size="small" label={t('chat.experts_active', { count: tierExperts.length })} sx={{ background: 'rgba(16,185,129,0.1)', color: '#10b981', fontWeight: 600, fontSize: '0.65rem' }} />
                 </Box>
               </Box>
 
@@ -195,12 +197,12 @@ export default function ChatPage({ user, token }: ChatPageProps) {
               </Box>
 
               <Typography variant="caption" sx={{ px: 2, py: 0.5, color: 'text.secondary', display: 'block', fontSize: '0.65rem' }}>
-                Uygun uzmanlar: {tierExperts.map(e => e.fullName).join(", ") || "Yok"}
+                {t('chat.available_experts')} {tierExperts.map(e => e.fullName).join(", ") || t('chat.none')}
               </Typography>
 
               <Box sx={{ height: 400, p: 1.5, overflowY: 'auto', background: 'rgba(0,0,0,0.1)' }}>
                 {messages.length === 0 && (
-                  <Alert severity="info" sx={{ mx: 1 }}>Henüz mesaj yok. İlk mesajı gönderin.</Alert>
+                  <Alert severity="info" sx={{ mx: 1 }}>{t('chat.no_messages')}</Alert>
                 )}
                 {messages.map(msg => {
                   const isUser = msg.senderRole === 'user';
@@ -219,7 +221,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
                           <Typography variant="caption" sx={{ fontWeight: 700, color: isUser ? '#00d4ff' : '#10b981', display: 'block', mb: 0.3 }}>{displayName}</Typography>
                           <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', color: 'text.primary', fontSize: '0.8rem' }}>{msg.message}</Typography>
                           <Typography variant="caption" sx={{ mt: 0.5, display: 'block', opacity: 0.6, textAlign: isUser ? 'right' : 'left', fontSize: '0.6rem' }}>
-                            {formatMessageTime(msg.createdAt)}{isUser ? ` • ${formatReadStatus(msg.readAt)}` : ''}
+                            {formatMessageTime(msg.createdAt)}{isUser ? ` • ${formatReadStatus(msg.readAt, t)}` : ''}
                           </Typography>
                         </Box>
                       </Box>
@@ -232,7 +234,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
               {sendError && <Alert severity="error" sx={{ mx: 2, mb: 1 }}>{sendError}</Alert>}
               <Box component="form" onSubmit={(e) => { e.preventDefault(); sendMessage(); }}
                 sx={{ display: 'flex', gap: 1, p: 2, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
-                <TextField fullWidth variant="outlined" size="small" value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder="Uzmanınıza mesaj yazın..." />
+                <TextField fullWidth variant="outlined" size="small" value={chatText} onChange={(e) => setChatText(e.target.value)} placeholder={t('chat.placeholder_expert')} />
                 <Button type="submit" variant="contained" sx={{
                   minWidth: 48, background: 'linear-gradient(135deg, #00d4ff, #7c3aed)',
                   '&:hover': { background: 'linear-gradient(135deg, #33ddff, #9655f5)' },
@@ -250,7 +252,7 @@ export default function ChatPage({ user, token }: ChatPageProps) {
 
 const getMembershipLevel = (tier: string): number => ({ free: 0, bronze: 1, silver: 2, gold: 3 }[tier] || 0);
 const formatMessageTime = (value: string): string => new Date(value).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
-const formatReadStatus = (readAt?: string | null): string => {
-  if (!readAt) return "Gonderildi";
-  return `Okundu ${new Date(readAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
+const formatReadStatus = (readAt: string | undefined | null, t: any): string => {
+  if (!readAt) return t('chat.status_sent');
+  return `${t('chat.status_read')} ${new Date(readAt).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" })}`;
 };

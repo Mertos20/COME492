@@ -41,29 +41,30 @@ import {
 import NotificationBell from "./NotificationBell";
 import { useThemeMode } from "../contexts/ThemeContext";
 import { useMarket } from "../contexts/MarketContext";
+import { useTranslation } from "react-i18next";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
     value
   );
 
-const getPageInfo = (path: string) => {
-  if (path === '/') return { title: 'Dashboard', subtitle: 'Portföy Özeti' };
-  if (path.startsWith('/markets')) return { title: 'Piyasalar', subtitle: 'Canlı Veriler' };
-  if (path.startsWith('/trading')) return { title: 'Al / Sat', subtitle: 'İşlem Terminali' };
-  if (path.startsWith('/portfolio')) return { title: 'Portföy', subtitle: 'Varlık Detayları' };
-  if (path.startsWith('/watchlist')) return { title: 'Favoriler', subtitle: 'İzleme Listesi' };
-  if (path.startsWith('/transactions')) return { title: 'İşlem Geçmişi', subtitle: 'Aktivite Dökümü' };
-  if (path.startsWith('/chat')) return { title: 'Danışmanlar', subtitle: 'Uzman & AI Destek' };
-  if (path.startsWith('/analysis')) return { title: 'Analiz & Raporlar', subtitle: 'Premium İçerikler' };
-  if (path.startsWith('/game')) return { title: 'Tahmin Modülü', subtitle: 'Piyasa Simülasyonu' };
-  if (path.startsWith('/load-balance')) return { title: 'Cüzdan', subtitle: 'Bakiye Yönetimi' };
-  if (path.startsWith('/profile')) return { title: 'Profil', subtitle: 'Hesap Ayarları' };
-  if (path.startsWith('/subscriptions')) return { title: 'Üyelikler', subtitle: 'Premium Planlar' };
-  if (path.startsWith('/admin')) return { title: 'Admin Paneli', subtitle: 'Sistem Yönetimi' };
-  if (path.startsWith('/expert')) return { title: 'Uzman Paneli', subtitle: 'Kullanıcı Danışmanlığı' };
-  if (path.startsWith('/news')) return { title: 'Haberler', subtitle: 'Güncel Akış' };
-  return { title: 'portfol.io', subtitle: 'Yatırım Platformu' };
+const getPageInfo = (path: string, t: any) => {
+  if (path === '/') return { title: t('nav.dashboard'), subtitle: t('nav.dashboard_sub') };
+  if (path.startsWith('/markets')) return { title: t('nav.markets'), subtitle: t('nav.markets_sub') };
+  if (path.startsWith('/trading')) return { title: t('nav.trading'), subtitle: t('nav.trading_sub') };
+  if (path.startsWith('/portfolio')) return { title: t('nav.portfolio'), subtitle: t('nav.portfolio_sub') };
+  if (path.startsWith('/watchlist')) return { title: t('nav.watchlist'), subtitle: t('nav.watchlist_sub') };
+  if (path.startsWith('/transactions')) return { title: t('nav.transactions'), subtitle: t('nav.transactions_sub') };
+  if (path.startsWith('/chat')) return { title: t('nav.chat'), subtitle: t('nav.chat_sub') };
+  if (path.startsWith('/analysis')) return { title: t('nav.analysis'), subtitle: t('nav.analysis_sub') };
+  if (path.startsWith('/game')) return { title: t('nav.game'), subtitle: t('nav.game_sub') };
+  if (path.startsWith('/load-balance')) return { title: t('nav.load_balance'), subtitle: t('nav.load_balance_sub') };
+  if (path.startsWith('/profile')) return { title: t('nav.profile'), subtitle: t('nav.profile_sub') };
+  if (path.startsWith('/subscriptions')) return { title: t('nav.subscriptions'), subtitle: t('nav.subscriptions_sub') };
+  if (path.startsWith('/admin')) return { title: t('nav.admin'), subtitle: t('nav.admin_sub') };
+  if (path.startsWith('/expert')) return { title: t('nav.expert'), subtitle: t('nav.expert_sub') };
+  if (path.startsWith('/news')) return { title: t('nav.news'), subtitle: t('nav.news_sub') };
+  return { title: t('nav.default_title'), subtitle: t('nav.default_sub') };
 };
 
 const worldClocks = [
@@ -106,6 +107,11 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const isDark = mode === 'dark';
   const { instruments } = useMarket();
   const [tickerIndex, setTickerIndex] = useState(0);
+  const { t, i18n } = useTranslation();
+
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language.startsWith('en') ? 'tr' : 'en');
+  };
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -117,39 +123,40 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const tickerItems = instruments.filter(i => ["BTCUSDT", "ETHUSDT", "XAUUSD", "USDTRY"].includes(i.symbol));
   const displayItems = tickerItems.length > 0 ? tickerItems : instruments.slice(0, 4);
   const currentTicker = displayItems.length > 0 ? displayItems[tickerIndex % displayItems.length] : null;
-  const pageInfo = getPageInfo(location.pathname);
+  const pageInfo = getPageInfo(location.pathname, t);
   const currentClock = worldClocks[tickerIndex % worldClocks.length];
   const clockTime = new Intl.DateTimeFormat('tr-TR', { timeZone: currentClock.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date());
 
   const baseLinks: NavItem[] = user?.isAdmin
     ? [
-        { path: "/admin", label: "Admin", icon: <AdminPanelSettings />, adminOnly: true },
+        { path: "/admin", label: t('nav.admin'), icon: <AdminPanelSettings />, adminOnly: true },
       ]
     : [
-        { path: "/", label: "Dashboard", icon: <Dashboard /> },
-        { path: "/markets", label: "Piyasalar", icon: <ShowChart /> },
-        { path: "/news", label: "Haberler", icon: <Article /> },
+        { path: "/", label: t('nav.dashboard'), icon: <Dashboard /> },
+        { path: "/markets", label: t('nav.markets'), icon: <ShowChart /> },
+        { path: "/news", label: t('nav.news'), icon: <Article /> },
       ];
 
   const userLinks: NavItem[] =
     user?.role === "user" && !user.isAdmin
       ? [
-          { path: "/watchlist", label: "Favoriler", icon: <Star /> },
-          { path: "/load-balance", label: "Cüzdan Yönetimi", icon: <AccountBalanceWallet /> },
-          { path: "/transactions", label: "İşlem Geçmişi", icon: <Receipt /> },
-          { path: "/trading", label: "Al/Sat", icon: <SwapHoriz /> },
-          { path: "/chat", label: "Danışmanlar", icon: <People /> },
-          { path: "/analysis", label: "Analiz & Raporlar", icon: <Assessment /> },
-          { path: "/game", label: "Tahmin Modülü", icon: <Radar /> },
+          { path: "/watchlist", label: t('nav.watchlist'), icon: <Star /> },
+          { path: "/load-balance", label: t('nav.load_balance'), icon: <AccountBalanceWallet /> },
+          { path: "/transactions", label: t('nav.transactions'), icon: <Receipt /> },
+          { path: "/trading", label: t('nav.trading'), icon: <SwapHoriz /> },
+          { path: "/chat", label: t('nav.chat'), icon: <People /> },
+          { path: "/analysis", label: t('nav.analysis'), icon: <Assessment /> },
+          { path: "/game", label: t('nav.game'), icon: <Radar /> },
         ]
       : user?.role === "expert" ? [
-          { path: "/expert", label: "Uzman Paneli", icon: <AdminPanelSettings /> },
-          { path: "/profile", label: "Profil", icon: <Person /> },
+          { path: "/expert", label: t('nav.expert'), icon: <AdminPanelSettings /> },
+          { path: "/profile", label: t('nav.profile'), icon: <Person /> },
         ] : [];
 
   const allLinks = [...baseLinks, ...userLinks].filter(link => !link.adminOnly || (link.adminOnly && user?.isAdmin));
 
-  const sidebarWidth = collapsed && !isMobile ? 88 : 260;
+  const showSidebar = user !== null;
+  const sidebarWidth = showSidebar ? (collapsed && !isMobile ? 88 : 260) : 0;
 
   const sidebarContent = (
     <Box
@@ -207,7 +214,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               portfol.io
             </Typography>
             <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
-              YATIRIM PLATFORMU
+              {t('nav.default_sub')}
             </Typography>
           </Box>
         )}
@@ -234,7 +241,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               letterSpacing: '0.1em',
             }}
           >
-            Ana Menü
+            {t('nav.main_menu')}
           </Typography>
         )}
         {allLinks.map((link) => {
@@ -309,13 +316,13 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                   letterSpacing: '0.1em',
                 }}
               >
-                Hızlı İşlemler
+                {t('nav.quick_actions')}
               </Typography>
             )}
             {[
-              { path: '/subscriptions', label: 'Üyelikler', icon: <WorkspacePremium sx={{ opacity: 0.7 }} />, color: '#7c3aed', bgHover: 'rgba(124, 58, 237, 0.08)' },
-              { path: '/load-balance', label: 'Bakiye Yükle', icon: <AddCard sx={{ opacity: 0.7 }} />, color: '#10b981', bgHover: 'rgba(16, 185, 129, 0.08)' },
-              { path: '/profile', label: 'Profil', icon: <Person sx={{ opacity: 0.7 }} />, color: '#00d4ff', bgHover: 'rgba(0, 212, 255, 0.08)' },
+              { path: '/subscriptions', label: t('nav.subscriptions'), icon: <WorkspacePremium sx={{ opacity: 0.7 }} />, color: '#7c3aed', bgHover: 'rgba(124, 58, 237, 0.08)' },
+              { path: '/load-balance', label: t('nav.load_balance'), icon: <AddCard sx={{ opacity: 0.7 }} />, color: '#10b981', bgHover: 'rgba(16, 185, 129, 0.08)' },
+              { path: '/profile', label: t('nav.profile'), icon: <Person sx={{ opacity: 0.7 }} />, color: '#00d4ff', bgHover: 'rgba(0, 212, 255, 0.08)' },
             ].map(link => {
               const isActive = location.pathname === link.path;
               const content = (
@@ -418,7 +425,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                 mb: 1.5,
               }}
             >
-              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>BAKİYE</Typography>
+              <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>{t('nav.balance')}</Typography>
               <Typography
                 variant="body2"
                 sx={{
@@ -452,10 +459,10 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                 },
               }}
             >
-              Çıkış Yap
+              {t('nav.logout')}
             </Button>
           ) : (
-            <Tooltip title="Çıkış Yap" placement="right" arrow>
+            <Tooltip title={t('nav.logout')} placement="right" arrow>
               <IconButton
                 onClick={onLogout}
                 sx={{
@@ -482,7 +489,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   return (
     <Box sx={{ display: 'flex', minHeight: '100vh' }}>
       {/* Sidebar - Desktop */}
-      {!isMobile && (
+      {!isMobile && showSidebar && (
         <Box
           sx={{
             width: sidebarWidth,
@@ -500,7 +507,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
       )}
 
       {/* Mobile Drawer */}
-      {isMobile && (
+      {isMobile && showSidebar && (
         <Drawer
           anchor="left"
           open={drawerOpen}
@@ -544,12 +551,12 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               boxShadow: isDark ? '0 4px 30px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.05)',
           }}
         >
-          {!isMobile && (
+          {!isMobile && showSidebar && (
             <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ mr: 2, color: 'text.secondary' }}>
               <MenuIcon />
             </IconButton>
           )}
-          {isMobile && (
+          {isMobile && showSidebar && (
             <IconButton onClick={() => setDrawerOpen(true)} sx={{ mr: 1.5, color: 'text.secondary' }}>
               <MenuIcon />
             </IconButton>
@@ -563,6 +570,23 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                 background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
                 WebkitBackgroundClip: 'text',
                 WebkitTextFillColor: 'transparent',
+              }}
+            >
+              portfol.io
+            </Typography>
+          )}
+          {!isMobile && !showSidebar && (
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                fontSize: '1.2rem',
+                background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
               }}
             >
               portfol.io
@@ -602,6 +626,10 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                     </Box>
                   </>
                 )}
+              </Box>
+          )}
+
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1, md: 1.5 }, ml: user ? 2.5 : 'auto' }}>
               {!isMobile && currentTicker && (
                 <Chip
                   icon={currentTicker.change30d >= 0 ? <TrendingUp sx={{ color: '#10b981 !important', fontSize: '1.2rem !important' }} /> : <TrendingDown sx={{ color: '#ef4444 !important', fontSize: '1.2rem !important' }} />}
@@ -624,30 +652,51 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                   }}
                 />
               )}
-          <Tooltip title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
-            <IconButton
-              onClick={toggleTheme}
-              size="small"
-              sx={{
-                color: isDark ? '#f59e0b' : '#6366f1',
-                background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                border: isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(99, 102, 241, 0.15)',
-                transition: 'all 0.3s ease',
-                '&:hover': {
-                  background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                  transform: 'rotate(30deg)',
-                },
-              }}
-            >
-              {isDark ? <LightMode sx={{ fontSize: 20 }} /> : <DarkMode sx={{ fontSize: 20 }} />}
-            </IconButton>
-          </Tooltip>
-              <NotificationBell />
-              {!isMobile && (
+          {user && (
+            <Tooltip title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
+              <IconButton
+                onClick={toggleTheme}
+                size="small"
+                sx={{
+                  color: isDark ? '#f59e0b' : '#6366f1',
+                  background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                  border: isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(99, 102, 241, 0.15)',
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                    transform: 'rotate(30deg)',
+                  },
+                }}
+              >
+                {isDark ? <LightMode sx={{ fontSize: 20 }} /> : <DarkMode sx={{ fontSize: 20 }} />}
+              </IconButton>
+            </Tooltip>
+          )}
+          <Button
+            onClick={toggleLanguage}
+            sx={{
+              minWidth: 40,
+              p: '6px',
+              color: 'text.secondary',
+              fontWeight: 700,
+              fontSize: '0.8rem',
+              border: isDark ? '1px solid rgba(255, 255, 255, 0.1)' : '1px solid rgba(0, 0, 0, 0.1)',
+              borderRadius: '8px',
+              '&:hover': {
+                borderColor: '#00d4ff',
+                color: '#00d4ff',
+                backgroundColor: 'rgba(0, 212, 255, 0.05)',
+              },
+            }}
+          >
+            {i18n.language?.startsWith('en') ? 'EN' : 'TR'}
+          </Button>
+              {user && <NotificationBell />}
+              {!isMobile && user && (
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2, borderLeft: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
                     <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                       <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em' }}>
-                        HOŞ GELDİNİZ
+                        {t('nav.welcome')}
                       </Typography>
                       <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.85rem', lineHeight: 1 }}>
                         {user.fullName}
@@ -667,8 +716,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                   </Avatar>
                 </Box>
               )}
-            </Box>
-          )}
+          </Box>
         </Box>
 
         {/* Page Content */}
@@ -676,8 +724,8 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           component="main"
           sx={{
             flex: 1,
-          p: { xs: 2, sm: 3, md: 4 },
-          maxWidth: '100%',
+            p: user ? { xs: 2, sm: 3, md: 4 } : 0,
+            maxWidth: '100%',
             width: '100%',
             mx: 'auto',
             animation: 'fadeIn 0.4s ease-out',

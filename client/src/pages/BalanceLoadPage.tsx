@@ -5,6 +5,7 @@ import { useSnackbar } from 'notistack';
 import { api } from '../api';
 import { AccountBalanceWallet, Lock, CheckCircle, VerifiedUser, AccountBalance } from '@mui/icons-material';
 import CheckoutModal from '../components/CheckoutModal';
+import { useTranslation } from 'react-i18next';
 
 interface BalanceLoadPageProps {
   onBalanceChange?: () => void;
@@ -26,6 +27,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const navigate = useNavigate();
   const theme = useTheme();
   const isDark = theme.palette.mode === 'dark';
+  const { t } = useTranslation();
 
   const quickAmounts = [1000, 5000, 10000, 25000, 50000];
 
@@ -46,7 +48,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
     e.preventDefault();
     const val = parseFloat(amount);
     if (!val || val <= 0) {
-      enqueueSnackbar('Lütfen geçerli bir tutar girin.', { variant: 'error' });
+      enqueueSnackbar(t('wallet.error_invalid_amount'), { variant: 'error' });
       return;
     }
     setCheckoutOpen(true);
@@ -55,7 +57,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
     const val = parseFloat(amount);
-    enqueueSnackbar(`${val.toLocaleString('tr-TR')} ₺ başarıyla yüklendi!`, { variant: 'success' });
+    enqueueSnackbar(t('wallet.success_deposit', { val: val.toLocaleString('tr-TR') }), { variant: 'success' });
     if (onBalanceChange) onBalanceChange();
     setTimeout(() => navigate('/portfolio'), 1500);
   };
@@ -79,20 +81,20 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
     const val = parseFloat(withdrawAmount);
     
     if (!val || val <= 0) {
-      enqueueSnackbar('Lütfen geçerli bir tutar girin.', { variant: 'error' });
+      enqueueSnackbar(t('wallet.error_invalid_amount'), { variant: 'error' });
       return;
     }
     if (val > currentBalance) {
-      enqueueSnackbar('Çekilebilir bakiyeniz yetersiz.', { variant: 'error' });
+      enqueueSnackbar(t('wallet.error_insufficient_balance'), { variant: 'error' });
       return;
     }
     const rawIban = iban.replace(/\s/g, '');
     if (rawIban.length !== 26) {
-      enqueueSnackbar('Lütfen 26 karakterlik geçerli bir IBAN girin.', { variant: 'error' });
+      enqueueSnackbar(t('wallet.error_invalid_iban'), { variant: 'error' });
       return;
     }
     if (accountName.trim().length < 3) {
-      enqueueSnackbar('Lütfen hesap sahibinin adını tam girin.', { variant: 'error' });
+      enqueueSnackbar(t('wallet.error_invalid_name'), { variant: 'error' });
       return;
     }
 
@@ -103,7 +105,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
         iban,
         accountName
       });
-      enqueueSnackbar('Para çekme talebiniz başarıyla alındı.', { variant: 'success' });
+      enqueueSnackbar(t('wallet.success_withdraw'), { variant: 'success' });
       setWithdrawAmount('');
       setIban('TR');
       setAccountName('');
@@ -111,7 +113,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
       const res = await api.get('/wallet/balance');
       setCurrentBalance(res.data.balance);
     } catch (err: any) {
-      enqueueSnackbar(err.response?.data?.message || 'Para çekme işlemi başarısız.', { variant: 'error' });
+      enqueueSnackbar(err.response?.data?.message || t('wallet.error_withdraw_failed'), { variant: 'error' });
     } finally {
       setLoading(false);
     }
@@ -130,10 +132,10 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
           <AccountBalanceWallet sx={{ color: '#fff', fontSize: 32 }} />
         </Box>
         <Typography variant="h3" sx={{ fontWeight: 900, mb: 1, background: isDark ? 'linear-gradient(90deg, #fff, #94a3b8)' : 'linear-gradient(90deg, #1e293b, #475569)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>
-          Cüzdan Yönetimi
+          {t('wallet.title')}
         </Typography>
         <Typography variant="body1" sx={{ color: 'text.secondary', maxWidth: 400, mx: 'auto' }}>
-          Bakiyenizi güvenle yükleyin veya banka hesabınıza çekim talebi oluşturun.
+          {t('wallet.subtitle')}
         </Typography>
       </Box>
 
@@ -157,8 +159,8 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
             '& .MuiTabs-indicator': { backgroundColor: '#00d4ff', height: 3 }
           }}
         >
-          <Tab label="Para Yükle" />
-          <Tab label="Para Çek" />
+          <Tab label={t('wallet.tab_deposit')} />
+          <Tab label={t('wallet.tab_withdraw')} />
         </Tabs>
 
         <Box sx={{ p: 4 }}>
@@ -168,7 +170,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
             {/* Quick Amounts */}
             <Box>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-                Hızlı Tutar Seçimi
+                {t('wallet.quick_amount')}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
                 {quickAmounts.map(a => (
@@ -199,7 +201,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
 
             <Box>
               <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1.5 }}>
-                Yüklenecek Tutar
+                {t('wallet.deposit_amount')}
               </Typography>
               <TextField 
                 fullWidth
@@ -237,13 +239,13 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                 transition: 'all 0.2s'
               }}
             >
-              {loading ? 'İşleniyor...' : 'Ödeme Adımına Geç'}
+              {loading ? t('wallet.processing') : t('wallet.btn_proceed_payment')}
             </Button>
 
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 2, pt: 1 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <Lock sx={{ fontSize: 16, color: 'success.main' }} />
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>Güvenli SSL</Typography>
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('wallet.secure_ssl')}</Typography>
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                 <VerifiedUser sx={{ fontSize: 16, color: 'success.main' }} />
@@ -256,14 +258,14 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
           <form onSubmit={handleWithdraw}>
             <Stack spacing={3}>
               <Box sx={{ mb: 2, p: 2, borderRadius: '16px', background: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px dashed rgba(255,255,255,0.1)' : '1px dashed rgba(0,0,0,0.1)' }}>
-                <Typography variant="body2" color="text.secondary" gutterBottom>Çekilebilir Bakiye</Typography>
+                <Typography variant="body2" color="text.secondary" gutterBottom>{t('wallet.withdrawable_balance')}</Typography>
                 <Typography variant="h4" sx={{ fontWeight: 800, color: '#10b981' }}>
                   ₺{currentBalance.toLocaleString('tr-TR', { minimumFractionDigits: 2 })}
                 </Typography>
               </Box>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>Çekilecek Tutar</Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>{t('wallet.withdraw_amount')}</Typography>
                 <TextField 
                   fullWidth type="number" value={withdrawAmount} 
                   onChange={(e) => setWithdrawAmount(e.target.value)} 
@@ -293,11 +295,11 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
               </Box>
 
               <Box>
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>Hesap Sahibi (Ad Soyad)</Typography>
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>{t('wallet.account_holder')}</Typography>
                 <TextField 
                   fullWidth value={accountName} 
                   onChange={(e) => setAccountName(e.target.value)} 
-                  placeholder="Örn: Ali Yılmaz"
+                  placeholder={t('wallet.placeholder_name')}
                   slotProps={{
                     input: { sx: { borderRadius: '12px' } }
                   }}
@@ -314,7 +316,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                   transition: 'all 0.2s'
                 }}
               >
-                {loading ? 'İşleniyor...' : 'Çekim Talebi Oluştur'}
+                {loading ? t('wallet.processing') : t('wallet.btn_withdraw')}
               </Button>
             </Stack>
           </form>
@@ -326,7 +328,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
       <CheckoutModal 
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
-        tier="Bakiye Yükleme"
+        tier={t('wallet.tier_load')}
         price={parseFloat(amount) || 0}
         onSuccess={handlePaymentSuccess}
       />

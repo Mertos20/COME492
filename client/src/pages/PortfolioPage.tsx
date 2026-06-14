@@ -5,6 +5,7 @@ import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContain
 import { TrendingUp, TrendingDown, AccountBalance, Assessment, LockOpen, Lock } from '@mui/icons-material';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import LoadingSkeleton from "../components/LoadingSkeleton";
+import { useTranslation } from "react-i18next";
 
 interface RealizedPnlData {
   totalRealizedPnl: number;
@@ -107,6 +108,7 @@ export default function PortfolioPage() {
   const [range, setRange] = useState<RangeKey>("1M");
   const [loading, setLoading] = useState(true);
   const [realizedPnl, setRealizedPnl] = useState<RealizedPnlData | null>(null);
+  const { t } = useTranslation();
 
   useEffect(() => {
     const load = async () => {
@@ -117,14 +119,14 @@ export default function PortfolioPage() {
           api.get<RealizedPnlData>("/portfolio/realized-pnl"),
         ]);
         setPortfolio(p.data); setMarkets(m.data); setRealizedPnl(r.data);
-      } catch { console.error("Portföy yüklenemedi"); }
+      } catch { console.error(t('portfolio.error_console')); }
       finally { setLoading(false); }
     };
     load();
   }, []);
 
   if (loading) return <LoadingSkeleton type="dashboard" />;
-  if (!portfolio) return <Alert severity="error">Portföy bilgileri yüklenemedi.</Alert>;
+  if (!portfolio) return <Alert severity="error">{t('portfolio.error_loading')}</Alert>;
 
   const totalPnl = toNumber(portfolio.totalPnl), totalPnlPercent = toNumber(portfolio.totalPnlPercent);
   const investmentValue = toNumber(portfolio.investmentValue), currentValue = toNumber(portfolio.currentValue), balance = toNumber(portfolio.balance);
@@ -132,15 +134,15 @@ export default function PortfolioPage() {
 
   return (
     <Box>
-      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>Portföy Detayları</Typography>
-      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>Tüm varlıklarınızın detaylı görünümü</Typography>
+      <Typography variant="h4" sx={{ fontWeight: 800, mb: 0.5 }}>{t('portfolio.title')}</Typography>
+      <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('portfolio.subtitle')}</Typography>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
         <Grid item xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', background: totalPnl >= 0 ? 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)' : 'linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)', border: `1px solid ${totalPnl >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, animation: 'slideUp 0.5s ease-out' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Assessment sx={{ color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Genel Durum</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('portfolio.general_status')}</Typography>
             </Box>
             <Box sx={{ display: 'flex', alignItems: 'center', color: totalPnl >= 0 ? 'success.main' : 'error.main', gap: 0.5 }}>
               {totalPnl >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
@@ -153,9 +155,9 @@ export default function PortfolioPage() {
           <Paper elevation={0} sx={{ p: 3, height: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animation: 'slideUp 0.5s ease-out' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <AccountBalance sx={{ color: 'text.secondary', fontSize: 20 }} />
-              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Değerler</Typography>
+              <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('portfolio.values')}</Typography>
             </Box>
-            {[{ l: 'Yatırım Değeri', v: formatMoney(investmentValue), c: '#7c3aed' }, { l: 'Anlık Değer', v: formatMoney(currentValue), c: '#00d4ff' }, { l: 'Bakiye', v: formatMoney(balance), c: '#10b981' }].map(i => (
+            {[{ l: t('portfolio.investment_value'), v: formatMoney(investmentValue), c: '#7c3aed' }, { l: t('portfolio.current_value'), v: formatMoney(currentValue), c: '#00d4ff' }, { l: t('portfolio.balance'), v: formatMoney(balance), c: '#10b981' }].map(i => (
               <Box key={i.l} sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
                 <Typography variant="body2" sx={{ color: 'text.secondary' }}>{i.l}</Typography>
                 <Typography variant="body2" sx={{ fontWeight: 700, color: i.c }}>{i.v}</Typography>
@@ -165,13 +167,13 @@ export default function PortfolioPage() {
         </Grid>
       </Grid>
 
-      {portfolio.holdings.length === 0 ? <Alert severity="info">Henüz bir varlık edinmemişsiniz.</Alert> : (
+      {portfolio.holdings.length === 0 ? <Alert severity="info">{t('portfolio.no_assets')}</Alert> : (
         <TableContainer component={Paper} elevation={0} sx={{ background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', mb: 4 }}>
           <Table>
             <TableHead><TableRow>
-              <TableCell>Sembol</TableCell><TableCell align="right">Miktar</TableCell><TableCell align="right">Ort. Alış</TableCell>
-              <TableCell align="right">Anlık Fiyat</TableCell><TableCell align="right">Toplam Değer</TableCell>
-              <TableCell align="right">K/Z</TableCell><TableCell align="right">K/Z %</TableCell>
+              <TableCell>{t('portfolio.table_symbol')}</TableCell><TableCell align="right">{t('portfolio.table_amount')}</TableCell><TableCell align="right">{t('portfolio.table_avg_buy')}</TableCell>
+              <TableCell align="right">{t('portfolio.table_current_price')}</TableCell><TableCell align="right">{t('portfolio.table_total_value')}</TableCell>
+              <TableCell align="right">{t('portfolio.table_pnl')}</TableCell><TableCell align="right">{t('portfolio.table_pnl_percent')}</TableCell>
             </TableRow></TableHead>
             <TableBody>
               {portfolio.holdings.map(row => {
@@ -193,7 +195,7 @@ export default function PortfolioPage() {
       )}
 
       <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Kazanç / Zarar Grafiği</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{t('portfolio.chart_title')}</Typography>
         <Box sx={{ width: "100%", height: { xs: 320, md: 450 }, minHeight: { xs: 320, md: 450 } }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={performanceSeries} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
@@ -205,8 +207,8 @@ export default function PortfolioPage() {
               <XAxis dataKey="label" tick={{ fontSize: 12, fill: '#64748b' }} stroke="rgba(255,255,255,0.06)" />
               <YAxis tickFormatter={v => `${Math.round(toNumber(v))}`} width={70} tick={{ fontSize: 12, fill: '#64748b' }} stroke="rgba(255,255,255,0.06)" />
               <Tooltip contentStyle={{ backgroundColor: 'rgba(17,22,56,0.95)', border: '1px solid rgba(0,212,255,0.2)', borderRadius: 12, color: '#e2e8f0' }}
-                formatter={(value: number, name: string) => name === "pnl" ? [formatMoney(toNumber(value)), "Kar/Zarar"] : [formatMoney(toNumber(value)), "Portföy Değeri"]}
-                labelFormatter={l => `Periyot: ${l}`} />
+                formatter={(value: number, name: string) => name === "pnl" ? [formatMoney(toNumber(value)), t('portfolio.tooltip_pnl')] : [formatMoney(toNumber(value)), t('portfolio.tooltip_value')]}
+                labelFormatter={l => `${t('portfolio.tooltip_period')}: ${l}`} />
               <Area type="monotone" dataKey="value" stroke="#00d4ff" strokeWidth={2} fill="url(#pv)" name="value" />
               <Area type="monotone" dataKey="pnl" stroke="#10b981" strokeWidth={2} fill="url(#pp)" name="pnl" />
             </AreaChart>
@@ -214,17 +216,17 @@ export default function PortfolioPage() {
         </Box>
         <Box sx={{ display: "flex", justifyContent: "center", mt: 2 }}>
           <ToggleButtonGroup value={range} exclusive onChange={(_e, n) => { if (n) setRange(n); }} size="small">
-            <ToggleButton value="1D">1 Gün</ToggleButton>
-            <ToggleButton value="1W">1 Hafta</ToggleButton>
-            <ToggleButton value="1M">1 Ay</ToggleButton>
-            <ToggleButton value="1Y">1 Yıl</ToggleButton>
+            <ToggleButton value="1D">{t('portfolio.1d')}</ToggleButton>
+            <ToggleButton value="1W">{t('portfolio.1w')}</ToggleButton>
+            <ToggleButton value="1M">{t('portfolio.1m')}</ToggleButton>
+            <ToggleButton value="1Y">{t('portfolio.1y')}</ToggleButton>
           </ToggleButtonGroup>
         </Box>
       </Paper>
 
       {/* Realized vs Unrealized PnL Section */}
       <Box sx={{ mt: 4 }}>
-        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Gerçekleşmiş vs Gerçekleşmemiş Kar/Zarar</Typography>
+        <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{t('portfolio.realized_vs_unrealized')}</Typography>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {/* Unrealized PnL Card */}
           <Grid item xs={12} md={6}>
@@ -241,8 +243,8 @@ export default function PortfolioPage() {
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                 <Lock sx={{ color: 'text.secondary', fontSize: 20 }} />
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Gerçekleşmemiş K/Z</Typography>
-                <Chip label="Açık Pozisyonlar" size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)' }} />
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('portfolio.unrealized_pnl')}</Typography>
+                <Chip label={t('portfolio.open_positions')} size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(0,212,255,0.1)', color: '#00d4ff', border: '1px solid rgba(0,212,255,0.2)' }} />
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: totalPnl >= 0 ? 'success.main' : 'error.main' }}>
                 {totalPnl >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
@@ -250,7 +252,7 @@ export default function PortfolioPage() {
                 <Typography variant="body2" sx={{ opacity: 0.8 }}>({totalPnlPercent.toFixed(2)}%)</Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-                Portföyünüzde bulunan ve henüz satılmamış varlıklardan kaynaklanan kağıt üzerindeki kar/zarar.
+                {t('portfolio.unrealized_desc')}
               </Typography>
             </Paper>
           </Grid>
@@ -270,15 +272,15 @@ export default function PortfolioPage() {
             >
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
                 <LockOpen sx={{ color: 'text.secondary', fontSize: 20 }} />
-                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>Gerçekleşmiş K/Z</Typography>
-                <Chip label="Satılan Pozisyonlar" size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }} />
+                <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 600 }}>{t('portfolio.realized_pnl')}</Typography>
+                <Chip label={t('portfolio.sold_positions')} size="small" sx={{ ml: 'auto', height: 20, fontSize: '0.6rem', fontWeight: 600, background: 'rgba(124,58,237,0.1)', color: '#7c3aed', border: '1px solid rgba(124,58,237,0.2)' }} />
               </Box>
               <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1, color: (realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? 'success.main' : 'error.main' }}>
                 {(realizedPnl?.totalRealizedPnl ?? 0) >= 0 ? <TrendingUp sx={{ fontSize: 28 }} /> : <TrendingDown sx={{ fontSize: 28 }} />}
                 <Typography variant="h4" sx={{ fontWeight: 800 }}>{formatMoney(realizedPnl?.totalRealizedPnl ?? 0)}</Typography>
               </Box>
               <Typography variant="caption" sx={{ color: 'text.secondary', mt: 1, display: 'block' }}>
-                {realizedPnl?.totalRealizedCount ?? 0} satış işleminden elde edilen kesinleşmiş kar/zarar (FIFO yöntemi).
+                {t('portfolio.realized_desc', { count: realizedPnl?.totalRealizedCount ?? 0 })}
               </Typography>
             </Paper>
           </Grid>
@@ -290,10 +292,10 @@ export default function PortfolioPage() {
             <Table size="small">
               <TableHead>
                 <TableRow>
-                  <TableCell>Sembol</TableCell>
-                  <TableCell align="right">İşlem Sayısı</TableCell>
-                  <TableCell align="right">Toplam Satış</TableCell>
-                  <TableCell align="right">Gerçekleşmiş K/Z</TableCell>
+                  <TableCell>{t('portfolio.table_symbol')}</TableCell>
+                  <TableCell align="right">{t('portfolio.table_trade_count')}</TableCell>
+                  <TableCell align="right">{t('portfolio.table_total_sales')}</TableCell>
+                  <TableCell align="right">{t('portfolio.realized_pnl')}</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
