@@ -43,6 +43,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
     targetPrice: ""
   });
   const [pendingOrders, setPendingOrders] = useState<PendingOrder[]>([]);
+  const [holdings, setHoldings] = useState<{ symbol: string; quantity: number }[]>([]);
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -57,10 +58,13 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const { formatMoney, convertPrice } = useCurrency();
 
   useEffect(() => {
-    if (markets.length > 0 && !order.symbol) {
-      setOrder((prev) => ({ ...prev, symbol: markets[0].symbol }));
+    const availableMarkets = order.side === "sell" ? markets.filter(m => holdings.some(h => h.symbol === m.symbol)) : markets;
+    if (availableMarkets.length > 0 && (!order.symbol || !availableMarkets.some(m => m.symbol === order.symbol))) {
+      setOrder((prev) => ({ ...prev, symbol: availableMarkets[0].symbol }));
+    } else if (availableMarkets.length === 0 && order.symbol) {
+      setOrder((prev) => ({ ...prev, symbol: "" }));
     }
-  }, [markets, order.symbol]);
+  }, [markets, order.symbol, order.side, holdings]);
 
   const loadOrders = async () => {
     try {
@@ -71,10 +75,23 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
     }
   };
 
+  const loadHoldings = async () => {
+    try {
+      const res = await api.get("/portfolio/summary");
+      setHoldings(res.data.holdings || []);
+    } catch (err) {
+      console.error(err);
+    }
+  };
+
   useEffect(() => {
     loadOrders();
+    loadHoldings();
     // Refresh pending orders periodically
-    const interval = setInterval(loadOrders, 10000);
+    const interval = setInterval(() => {
+      loadOrders();
+      loadHoldings();
+    }, 10000);
     return () => clearInterval(interval);
   }, []);
 
@@ -120,12 +137,20 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
     }
   };
 
-  const handleTrade = async (overrideSide?: "buy" | "sell") => {
-    const activeSide = overrideSide || order.side;
+  const handleTrade = async (overrideSide?: "buy" | "sell" | any) => {
+    const activeSide = (overrideSide === "buy" || overrideSide === "sell") ? overrideSide : order.side;
     const quantity = Number(order.quantity);
     if (!quantity || quantity <= 0) {
       setError(t('trading.error_quantity'));
       return;
+    }
+
+    if (activeSide === "sell") {
+      const ownedQuantity = holdings.find(h => h.symbol === order.symbol)?.quantity || 0;
+      if (quantity > ownedQuantity) {
+        setError(t('trading.error_quantity')); // Or a specific error
+        return;
+      }
     }
 
     const targetPrice = Number(order.targetPrice);
@@ -149,6 +174,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
       setSuccess(res.data.message || t('trading.success_trade'));
       onTradeComplete();
       loadOrders(); // Refresh orders if it was a limit/stop order
+      loadHoldings(); // Refresh holdings
       setTimeout(() => setSuccess(""), 4000);
     } catch (err: any) {
       setError(err.response?.data?.message || t('trading.error_trade'));
@@ -163,6 +189,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
       setSuccess(t('trading.success_cancel'));
       onTradeComplete(); // Refund updates balance
       loadOrders();
+      loadHoldings();
     } catch (err: any) {
       setError(err.response?.data?.message || t('trading.error_cancel'));
     }
@@ -193,7 +220,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
 
   return (
     <Grid container spacing={3}>
-      <Grid item xs={12} md={8}>
+      <Grid xs={12} md={8}>
         <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
             <SwapHoriz color="primary" /> {t('trading.quick_trade')}
@@ -248,7 +275,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
           </Box>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel>{t('trading.instrument')}</InputLabel>
                 <Select
@@ -256,7 +283,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   onChange={(e) => setOrder({ ...order, symbol: e.target.value })}
                   label={t('trading.instrument')}
                 >
-                  {markets.map((m) => (
+                  {(order.side === "sell" ? markets.filter(m => holdings.some(h => h.symbol === m.symbol)) : markets).map((m) => (
                     <MenuItem key={m.symbol} value={m.symbol}>
                       <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
                         <span>{m.symbol} - {m.name}</span>
@@ -267,7 +294,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={12} sm={6}>
+            <Grid xs={12} sm={6}>
               <FormControl fullWidth variant="outlined">
                 <InputLabel>{t('trading.order_type')}</InputLabel>
                 <Select
@@ -282,21 +309,37 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
               </FormControl>
             </Grid>
 
-            <Grid item xs={12} sm={order.type !== "market" ? 6 : 12}>
-              <TextField
-                fullWidth
-                label={t('trading.quantity')}
-                type="number"
-                value={order.quantity}
-                onChange={(e) => setOrder({ ...order, quantity: e.target.value })}
-                slotProps={{
-                  input: { inputProps: { min: 0, step: 0.01 } }
-                }}
-              />
+            <Grid xs={12} sm={order.type !== "market" ? 6 : 12}>
+              <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                <TextField
+                  fullWidth
+                  label={t('trading.quantity')}
+                  type="number"
+                  value={order.quantity}
+                  onChange={(e) => setOrder({ ...order, quantity: e.target.value })}
+                  slotProps={{
+                    htmlInput: { min: 0, step: "any" }
+                  }}
+                />
+                {!isBuy && order.symbol && (
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', px: 1 }}>
+                    <Typography variant="caption" sx={{ color: 'text.secondary' }}>
+                      {t('trading.available')} <Typography component="span" sx={{ fontWeight: 700, color: '#00d4ff' }}>{holdings.find(h => h.symbol === order.symbol)?.quantity || 0} {order.symbol}</Typography>
+                    </Typography>
+                    <Button 
+                      size="small" 
+                      onClick={() => setOrder({ ...order, quantity: (holdings.find(h => h.symbol === order.symbol)?.quantity || 0).toString() })}
+                      sx={{ fontSize: '0.65rem', minWidth: 'auto', p: '2px 8px' }}
+                    >
+                      MAX
+                    </Button>
+                  </Box>
+                )}
+              </Box>
             </Grid>
 
             {order.type !== "market" && (
-              <Grid item xs={12} sm={6}>
+              <Grid xs={12} sm={6}>
                 <TextField
                   fullWidth
                   label={t('trading.target_price')}
@@ -304,7 +347,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                   value={order.targetPrice}
                   onChange={(e) => setOrder({ ...order, targetPrice: e.target.value })}
                   slotProps={{
-                    input: { inputProps: { min: 0, step: 0.01 } }
+                    htmlInput: { min: 0, step: "any" }
                   }}
                 />
               </Grid>
@@ -312,12 +355,12 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
           </Grid>
 
           <Box sx={{ mt: 4, p: 3, borderRadius: '12px', background: 'rgba(255, 255, 255, 0.03)', border: '1px dashed rgba(255, 255, 255, 0.1)' }}>
-            <Grid container alignItems="center" justifyContent="space-between">
-              <Grid item>
+            <Grid container sx={{ alignItems: 'center', justifyContent: 'space-between' }}>
+              <Grid>
                 <Typography variant="body2" color="text.secondary">{t('trading.current_price')}</Typography>
                 <Typography variant="h6">{formatMoney(currentPrice, base)}</Typography>
               </Grid>
-              <Grid item sx={{ textAlign: 'right' }}>
+              <Grid sx={{ textAlign: 'right' }}>
                 <Typography variant="body2" color="text.secondary">
                   {order.type === "market" ? t('trading.est_total') : t('trading.reserved_amount')}
                 </Typography>
@@ -403,7 +446,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         </Paper>
       </Grid>
 
-      <Grid item xs={12} md={4}>
+      <Grid xs={12} md={4}>
         <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)', textAlign: 'center' }}>
           <Box sx={{ 
             width: 64, height: 64, borderRadius: '50%', background: 'rgba(0, 212, 255, 0.1)', 
@@ -428,7 +471,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             value={depositAmount}
             onChange={(e) => setDepositAmount(e.target.value)}
             slotProps={{
-              input: { inputProps: { min: 0 } }
+              htmlInput: { min: 0, step: "any" }
             }}
             sx={{ mb: 2 }}
           />
@@ -481,7 +524,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
             value={alertTarget}
             onChange={(e) => setAlertTarget(e.target.value)}
             sx={{ mb: 2 }}
-            slotProps={{ input: { inputProps: { min: 0, step: 0.01 } } }}
+            slotProps={{ htmlInput: { min: 0, step: "any" } }}
           />
           
           <Button
@@ -569,7 +612,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
                 value={order.quantity}
                 onChange={(e) => setOrder({...order, quantity: e.target.value})}
                 sx={{ maxWidth: 300, flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: 2, '& .MuiInputBase-input': { color: '#fff', fontSize: '1.8rem', fontWeight: 800, py: 2 }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
-                InputProps={{ disableUnderline: true }}
+                slotProps={{ htmlInput: { min: 0, step: "any" }, input: { disableUnderline: true } }}
               />
             </Box>
             

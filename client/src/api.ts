@@ -12,3 +12,17 @@ export const setApiToken = (token: string | null): void => {
 
   api.defaults.headers.common.Authorization = `Bearer ${token}`;
 };
+
+api.interceptors.request.use((config) => {
+  const lang = localStorage.getItem('i18nextLng') || 'tr';
+  config.headers['Accept-Language'] = lang;
+  return config;
+});
+
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    console.error("API Error Response:", error.response?.data, error.message);
+    return Promise.reject(error);
+  }
+);

@@ -7,6 +7,7 @@ import { AccountBalanceWallet, Lock, CheckCircle, VerifiedUser, AccountBalance }
 import CheckoutModal from '../components/CheckoutModal';
 import { useTranslation } from 'react-i18next';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useMarket } from '../contexts/MarketContext';
 
 interface BalanceLoadPageProps {
   onBalanceChange?: () => void;
@@ -30,6 +31,18 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
   const isDark = theme.palette.mode === 'dark';
   const { t } = useTranslation();
   const { formatMoney, convertPrice, currency } = useCurrency();
+  const { instruments } = useMarket();
+
+  const usdtry = instruments.find(i => i.symbol === "USDTRY")?.price || 37;
+  const eurtry = instruments.find(i => i.symbol === "EURTRY")?.price || 40;
+
+  const getTryValue = (val: number) => {
+    if (currency === "USD") return val * usdtry;
+    if (currency === "EUR") return val * eurtry;
+    return val;
+  };
+
+  const currencySymbol = currency === "USD" ? "$" : currency === "EUR" ? "€" : "₺";
 
   const quickAmounts = [1000, 5000, 10000, 25000, 50000];
 
@@ -58,8 +71,8 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
 
   const handlePaymentSuccess = async () => {
     setCheckoutOpen(false);
-    const val = parseFloat(amount);
-    enqueueSnackbar(t('wallet.success_deposit', { val: formatMoney(val, "TRY") }), { variant: 'success' });
+    const tryVal = getTryValue(parseFloat(amount));
+    enqueueSnackbar(t('wallet.success_deposit', { val: formatMoney(tryVal, "TRY") }), { variant: 'success' });
     if (onBalanceChange) onBalanceChange();
     setTimeout(() => navigate('/portfolio'), 1500);
   };
@@ -86,7 +99,10 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
       enqueueSnackbar(t('wallet.error_invalid_amount'), { variant: 'error' });
       return;
     }
-    if (val > currentBalance) {
+    
+    const tryValue = getTryValue(val);
+    
+    if (tryValue > currentBalance) {
       enqueueSnackbar(t('wallet.error_insufficient_balance'), { variant: 'error' });
       return;
     }
@@ -103,7 +119,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
     setLoading(true);
     try {
       await api.post('/wallet/withdraw', {
-        amount: val,
+        amount: tryValue,
         iban,
         accountName
       });
@@ -175,29 +191,31 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                 {t('wallet.quick_amount')}
               </Typography>
               <Box sx={{ display: 'flex', gap: 1.5, flexWrap: 'wrap' }}>
-                {quickAmounts.map(a => (
-                  <Chip 
-                    key={a} 
-                    label={formatMoney(a, "TRY")} 
-                    clickable 
-                    onClick={() => setAmount(String(a))}
-                    sx={{
-                      height: 40,
-                      px: 1,
-                      fontWeight: 700,
-                      fontSize: '0.9rem',
-                      background: amount === String(a) ? 'rgba(0, 212, 255, 0.15)' : isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
-                      color: amount === String(a) ? '#00d4ff' : 'text.secondary',
-                      border: `1px solid ${amount === String(a) ? 'rgba(0, 212, 255, 0.3)' : isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
-                      '&:hover': { 
-                        background: 'rgba(0, 212, 255, 0.1)', 
-                        borderColor: 'rgba(0, 212, 255, 0.2)',
-                        transform: 'translateY(-2px)'
-                      },
-                      transition: 'all 0.2s'
-                    }} 
-                  />
-                ))}
+                {quickAmounts.map(a => {
+                  return (
+                    <Chip 
+                      key={a} 
+                      label={formatMoney(a, currency)} 
+                      clickable 
+                      onClick={() => setAmount(a.toString())}
+                      sx={{
+                        height: 40,
+                        px: 1,
+                        fontWeight: 700,
+                        fontSize: '0.9rem',
+                        background: amount === a.toString() ? 'rgba(0, 212, 255, 0.15)' : isDark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.03)',
+                        color: amount === a.toString() ? '#00d4ff' : 'text.secondary',
+                        border: `1px solid ${amount === a.toString() ? 'rgba(0, 212, 255, 0.3)' : isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)'}`,
+                        '&:hover': { 
+                          background: 'rgba(0, 212, 255, 0.1)', 
+                          borderColor: 'rgba(0, 212, 255, 0.2)',
+                          transform: 'translateY(-2px)'
+                        },
+                        transition: 'all 0.2s'
+                      }} 
+                    />
+                  );
+                })}
               </Box>
             </Box>
 
@@ -214,7 +232,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                 placeholder="0.00"
                 slotProps={{
                   input: {
-                    startAdornment: <Typography sx={{ mr: 1, fontWeight: 700, color: 'text.secondary' }}>₺</Typography>,
+                    startAdornment: <Typography sx={{ mr: 1, fontWeight: 700, color: 'text.secondary' }}>{currencySymbol}</Typography>,
                     sx: { fontSize: '1.5rem', fontWeight: 800, borderRadius: '16px' }
                   }
                 }}
@@ -274,7 +292,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
                   placeholder="0.00"
                   slotProps={{
                     input: {
-                      startAdornment: <Typography sx={{ mr: 1, fontWeight: 700, color: 'text.secondary' }}>₺</Typography>,
+                      startAdornment: <Typography sx={{ mr: 1, fontWeight: 700, color: 'text.secondary' }}>{currencySymbol}</Typography>,
                       sx: { fontSize: '1.2rem', fontWeight: 700, borderRadius: '12px' }
                     }
                   }}
@@ -331,7 +349,7 @@ const BalanceLoadPage: React.FC<BalanceLoadPageProps> = ({ onBalanceChange }) =>
         open={checkoutOpen}
         onClose={() => setCheckoutOpen(false)}
         tier={t('wallet.tier_load')}
-        price={parseFloat(amount) || 0}
+        price={getTryValue(parseFloat(amount)) || 0}
         onSuccess={handlePaymentSuccess}
       />
     </Box>

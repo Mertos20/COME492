@@ -9,133 +9,138 @@ const router = Router();
 
 // Endpoint to place an order (Market, Limit, or Stop)
 router.post("/order", requireAuth, async (req: AuthRequest, res) => {
-  const { side, symbol, quantity, type, targetPrice } = req.body as {
-    side: "buy" | "sell";
-    symbol: string;
-    quantity: number;
-    type?: "market" | "limit" | "stop";
-    targetPrice?: number;
-  };
+  try {
+    const { side, symbol, quantity, type, targetPrice } = req.body as {
+      side: "buy" | "sell";
+      symbol: string;
+      quantity: number;
+      type?: "market" | "limit" | "stop";
+      targetPrice?: number;
+    };
 
-  const orderType = type || "market";
+    const orderType = type || "market";
 
-  if ((orderType === "limit" || orderType === "stop") && (!targetPrice || targetPrice <= 0)) {
-    res.status(400).json({ message: "Limit/Stop emirleri için hedef fiyat belirtilmelidir." });
-    return;
-  }
-
-  const market = await getBySymbol(symbol);
-  if (!market) {
-    res.status(404).json({ message: "Yatırım ürünü bulunamadı" });
-    return;
-  }
-
-  const qty = Number(quantity);
-  if (!Number.isFinite(qty) || qty <= 0) {
-    res.status(400).json({ message: "Geçersiz miktar" });
-    return;
-  }
-
-  const user = await User.findById(req.user?.id);
-  if (!user) {
-    res.status(404).json({ message: "Kullanıcı bulunamadı" });
-    return;
-  }
-
-  const priceToUse = orderType === "market" ? market.price : (targetPrice as number);
-  let total = Number((qty * priceToUse).toFixed(4));
-
-  const usdBasedSymbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"];
-  if (usdBasedSymbols.includes(symbol)) {
-    const usdtryMarket = await getBySymbol("USDTRY");
-    if (usdtryMarket) {
-      total = Number((total * usdtryMarket.price).toFixed(4));
+    if ((orderType === "limit" || orderType === "stop") && (!targetPrice || targetPrice <= 0)) {
+      res.status(400).json({ message: "Limit/Stop emirleri için hedef fiyat belirtilmelidir." });
+      return;
     }
-  }
 
-  const holding = user.holdings.find((item: IHolding) => item.symbol === symbol);
+    const market = await getBySymbol(symbol);
+    if (!market) {
+      res.status(404).json({ message: "Yatırım ürünü bulunamadı" });
+      return;
+    }
 
-  if (orderType === "market") {
-    // Immediate execution for market order
-    if (side === "buy") {
-      if (user.balance < total) {
-        res.status(400).json({ message: "Yetersiz bakiye" });
-        return;
+    const qty = Number(quantity);
+    if (!Number.isFinite(qty) || qty <= 0) {
+      res.status(400).json({ message: "Geçersiz miktar" });
+      return;
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user) {
+      res.status(404).json({ message: "Kullanıcı bulunamadı" });
+      return;
+    }
+
+    const priceToUse = orderType === "market" ? market.price : (targetPrice as number);
+    let total = Number((qty * priceToUse).toFixed(4));
+
+    const usdBasedSymbols = ["BTCUSDT", "ETHUSDT", "SOLUSDT", "XAUUSD", "XAGUSD"];
+    if (usdBasedSymbols.includes(symbol)) {
+      const usdtryMarket = await getBySymbol("USDTRY");
+      if (usdtryMarket) {
+        total = Number((total * usdtryMarket.price).toFixed(4));
       }
-      user.balance -= total;
+    }
 
-      if (!holding) {
-        user.holdings.push({ symbol, quantity: qty, avgBuyPrice: market.price });
+    const holding = user.holdings.find((item: IHolding) => item.symbol === symbol);
+
+    if (orderType === "market") {
+      // Immediate execution for market order
+      if (side === "buy") {
+        if (user.balance < total) {
+          res.status(400).json({ message: "Yetersiz bakiye" });
+          return;
+        }
+        user.balance -= total;
+
+        if (!holding) {
+          user.holdings.push({ symbol, quantity: qty, avgBuyPrice: market.price });
+        } else {
+          const newQty = holding.quantity + qty;
+          holding.avgBuyPrice = (holding.quantity * (holding.avgBuyPrice || 0) + qty * market.price) / newQty;
+          holding.quantity = newQty;
+        }
       } else {
-        const newQty = holding.quantity + qty;
-        holding.avgBuyPrice = (holding.quantity * holding.avgBuyPrice + qty * market.price) / newQty;
-        holding.quantity = newQty;
+        if (!holding || holding.quantity < qty) {
+          res.status(400).json({ message: "Yetersiz varlık miktarı" });
+          return;
+        }
+        holding.quantity -= qty;
+        user.balance += total;
+
+        if (holding.quantity <= 0.0000001) {
+          user.holdings = user.holdings.filter((item: IHolding) => item.symbol !== symbol);
+        }
       }
+
+      await user.save();
+      await Transaction.create({
+        userId: user._id,
+        symbol,
+        type: side,
+        quantity: qty,
+        price: market.price,
+        total
+      });
+
+      res.json({ message: "İşlem başarıyla gerçekleşti", balance: user.balance, holdings: user.holdings });
     } else {
-      if (!holding || holding.quantity < qty) {
-        res.status(400).json({ message: "Yetersiz varlık miktarı" });
-        return;
-      }
-      holding.quantity -= qty;
-      user.balance += total;
-
-      if (holding.quantity <= 0.0000001) {
-        user.holdings = user.holdings.filter((item: IHolding) => item.symbol !== symbol);
-      }
-    }
-
-    await user.save();
-    await Transaction.create({
-      userId: user._id,
-      symbol,
-      type: side,
-      quantity: qty,
-      price: market.price,
-      total
-    });
-
-    res.json({ message: "İşlem başarıyla gerçekleşti", balance: user.balance, holdings: user.holdings });
-  } else {
-    // Limit or Stop Order -> Reserve balances and create Order
-    if (side === "buy") {
-      if (user.balance < total) {
-        res.status(400).json({ message: "Emir için yetersiz bakiye" });
-        return;
-      }
-      // Lock TRY balance
-      user.balance -= total;
-      user.lockedBalance += total;
-    } else {
-      if (!holding || holding.quantity < qty) {
-        res.status(400).json({ message: "Emir için yetersiz varlık miktarı" });
-        return;
-      }
-      // Lock holding quantity
-      holding.quantity -= qty;
-      let lockedHolding = user.lockedHoldings.find((item: IHolding) => item.symbol === symbol);
-      if (!lockedHolding) {
-        user.lockedHoldings.push({ symbol, quantity: qty, avgBuyPrice: holding.avgBuyPrice });
+      // Limit or Stop Order -> Reserve balances and create Order
+      if (side === "buy") {
+        if (user.balance < total) {
+          res.status(400).json({ message: "Emir için yetersiz bakiye" });
+          return;
+        }
+        // Lock TRY balance
+        user.balance -= total;
+        user.lockedBalance += total;
       } else {
-        lockedHolding.quantity += qty;
+        if (!holding || holding.quantity < qty) {
+          res.status(400).json({ message: "Emir için yetersiz varlık miktarı" });
+          return;
+        }
+        // Lock holding quantity
+        holding.quantity -= qty;
+        let lockedHolding = user.lockedHoldings.find((item: IHolding) => item.symbol === symbol);
+        if (!lockedHolding) {
+          user.lockedHoldings.push({ symbol, quantity: qty, avgBuyPrice: holding.avgBuyPrice || 0 });
+        } else {
+          lockedHolding.quantity += qty;
+        }
+        if (holding.quantity <= 0.0000001) {
+          user.holdings = user.holdings.filter((item: IHolding) => item.symbol !== symbol);
+        }
       }
-      if (holding.quantity <= 0.0000001) {
-        user.holdings = user.holdings.filter((item: IHolding) => item.symbol !== symbol);
-      }
+
+      await user.save();
+
+      const order = await Order.create({
+        userId: user._id,
+        symbol,
+        type: orderType,
+        side,
+        quantity: qty,
+        targetPrice,
+        status: "pending"
+      });
+
+      res.json({ message: "Emir başarıyla oluşturuldu", order, balance: user.balance, holdings: user.holdings });
     }
-
-    await user.save();
-
-    const order = await Order.create({
-      userId: user._id,
-      symbol,
-      type: orderType,
-      side,
-      quantity: qty,
-      targetPrice,
-      status: "pending"
-    });
-
-    res.json({ message: "Emir başarıyla oluşturuldu", order, balance: user.balance, holdings: user.holdings });
+  } catch (error: any) {
+    console.error("Trade order error:", error);
+    res.status(500).json({ message: error.message || "İşlem sırasında bir hata oluştu" });
   }
 });
 

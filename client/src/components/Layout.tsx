@@ -127,7 +127,9 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const currentTicker = displayItems.length > 0 ? displayItems[tickerIndex % displayItems.length] : null;
   const pageInfo = getPageInfo(location.pathname, t);
   const currentClock = worldClocks[tickerIndex % worldClocks.length];
-  const clockTime = new Intl.DateTimeFormat('tr-TR', { timeZone: currentClock.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date());
+  
+  const locale = i18n.language?.startsWith('en') ? 'en-US' : 'tr-TR';
+  const clockTime = new Intl.DateTimeFormat(locale, { timeZone: currentClock.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date());
 
   const baseLinks: NavItem[] = user?.isAdmin
     ? [
@@ -623,7 +625,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1, color: 'text.secondary', p: '6px 12px', borderRadius: '12px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
                       <CalendarToday sx={{ fontSize: 16, color: '#00d4ff' }} />
                       <Typography variant="caption" sx={{ fontWeight: 600, letterSpacing: '0.05em' }}>
-                        {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                        {new Date().toLocaleDateString(locale, { day: 'numeric', month: 'long', year: 'numeric' })}
                       </Typography>
                     </Box>
                   </>

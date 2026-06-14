@@ -151,61 +151,66 @@ router.get("/pricing", (_req, res) => {
 });
 
 router.post("/membership", requireAuth, async (req: AuthRequest, res) => {
-  const { tier } = req.body as { tier: MembershipTier };
-  if (!["free", "bronze", "silver", "gold"].includes(tier)) {
-    res.status(400).json({ message: "Gecersiz uyelik tipi" });
-    return;
+  try {
+    const { tier } = req.body as { tier: MembershipTier };
+    if (!["free", "bronze", "silver", "gold"].includes(tier)) {
+      res.status(400).json({ message: "Gecersiz uyelik tipi" });
+      return;
+    }
+
+    const user = await User.findById(req.user?.id);
+    if (!user) {
+      res.status(404).json({ message: "Kullanici bulunamadi" });
+      return;
+    }
+
+    // Check if trying to upgrade to higher tier or same tier
+    if (tier === "free") {
+      res.status(400).json({ message: "Ucretsiz plandan indirilemezsiniz" });
+      return;
+    }
+
+    if (user.membership === tier) {
+      res.status(400).json({ message: "Zaten bu plana abone siniz" });
+      return;
+    }
+
+    // Prevent downgrade (e.g., gold -> bronze)
+    if (MEMBERSHIP_LEVELS[tier] <= MEMBERSHIP_LEVELS[user.membership]) {
+      res.status(400).json({ message: "Mevcut planınızdan daha düşük bir plana geçemezsiniz" });
+      return;
+    }
+
+    const price = MEMBERSHIP_PRICES[tier];
+    if (user.balance < price) {
+      res.status(400).json({ message: `Yetersiz bakiye. Gerekli: ${price} TRY, Mevcut: ${user.balance} TRY` });
+      return;
+    }
+
+    // Deduct balance and update membership
+    user.balance -= price;
+    user.membership = tier;
+    await user.save();
+
+    // Create transaction record
+    await Transaction.create({
+      userId: user._id,
+      symbol: `${tier.toUpperCase()}_MEMBERSHIP`,
+      type: "upgrade",
+      quantity: 1,
+      price: price,
+      total: price
+    });
+
+    res.json({
+      membership: user.membership,
+      balance: user.balance,
+      message: `${tier.toUpperCase()} planina basarili sekilde gectiniz!`
+    });
+  } catch (error: any) {
+    console.error("Membership upgrade error:", error);
+    res.status(500).json({ message: error.message || "İşlem sırasında bir hata oluştu" });
   }
-
-  const user = await User.findById(req.user?.id);
-  if (!user) {
-    res.status(404).json({ message: "Kullanici bulunamadi" });
-    return;
-  }
-
-  // Check if trying to upgrade to higher tier or same tier
-  if (tier === "free") {
-    res.status(400).json({ message: "Ucretsiz plandan indirilemezsiniz" });
-    return;
-  }
-
-  if (user.membership === tier) {
-    res.status(400).json({ message: "Zaten bu plana abone siniz" });
-    return;
-  }
-
-  // Prevent downgrade (e.g., gold -> bronze)
-  if (MEMBERSHIP_LEVELS[tier] <= MEMBERSHIP_LEVELS[user.membership]) {
-    res.status(400).json({ message: "Mevcut planınızdan daha düşük bir plana geçemezsiniz" });
-    return;
-  }
-
-  const price = MEMBERSHIP_PRICES[tier];
-  if (user.balance < price) {
-    res.status(400).json({ message: `Yetersiz bakiye. Gerekli: ${price} TRY, Mevcut: ${user.balance} TRY` });
-    return;
-  }
-
-  // Deduct balance and update membership
-  user.balance -= price;
-  user.membership = tier;
-  await user.save();
-
-  // Create transaction record
-  await Transaction.create({
-    userId: user._id,
-    symbol: `${tier.toUpperCase()}_MEMBERSHIP`,
-    type: "upgrade",
-    quantity: 1,
-    price: price,
-    total: price
-  });
-
-  res.json({
-    membership: user.membership,
-    balance: user.balance,
-    message: `${tier.toUpperCase()} planina basarili sekilde gectiniz!`
-  });
 });
 
 // ─── Profile Update ───────────────────────────────────────────────

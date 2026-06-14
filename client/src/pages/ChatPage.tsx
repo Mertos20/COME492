@@ -9,7 +9,7 @@ import { useTranslation } from "react-i18next";
 interface ChatPageProps { user: AuthUser | null; token: string | null; }
 
 export default function ChatPage({ user, token }: ChatPageProps) {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const [activeTier, setActiveTier] = useState<"bronze" | "silver" | "gold">("bronze");
   const [experts, setExperts] = useState<ExpertProfile[]>([]);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -23,6 +23,17 @@ export default function ChatPage({ user, token }: ChatPageProps) {
   const [loadingAi, setLoadingAi] = useState(false);
   const messagesEndRef = useRef<null | HTMLDivElement>(null);
   const aiEndRef = useRef<null | HTMLDivElement>(null);
+
+  useEffect(() => {
+    setAiMessages(prev => {
+      if (prev.length > 0 && prev[0].role === "ai") {
+        const newMsgs = [...prev];
+        newMsgs[0] = { ...newMsgs[0], content: t('chat.ai_greeting') };
+        return newMsgs;
+      }
+      return prev;
+    });
+  }, [i18n.language, t]);
 
   const scrollToBottom = () => { messagesEndRef.current?.scrollIntoView({ behavior: "smooth" }); };
   const scrollAiToBottom = () => { aiEndRef.current?.scrollIntoView({ behavior: "smooth" }); };

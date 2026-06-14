@@ -6,6 +6,8 @@ import {
 } from '@mui/material';
 import { Close, CreditCard, Lock } from '@mui/icons-material';
 import { api } from '../api';
+import { useCurrency } from '../contexts/CurrencyContext';
+import { useTranslation } from 'react-i18next';
 
 interface CheckoutModalProps {
   open: boolean;
@@ -34,6 +36,8 @@ const formatExpiry = (value: string) => {
 };
 
 export default function CheckoutModal({ open, onClose, tier, price, onSuccess }: CheckoutModalProps) {
+  const { formatMoney } = useCurrency();
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState(1); // 1: Card, 2: Verification
   const [cardName, setCardName] = useState('');
@@ -55,17 +59,17 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
     let isValid = true;
 
     if (!/^[a-zA-Z\s]+$/.test(cardName)) {
-      newErrors.cardName = 'Sadece harf girilebilir.';
+      newErrors.cardName = t('checkout.err_letters_only');
       isValid = false;
     }
 
     if (cardNumber.replace(/\s/g, '').length !== 16) {
-      newErrors.cardNumber = '16 haneli olmalıdır.';
+      newErrors.cardNumber = t('checkout.err_16_digits');
       isValid = false;
     }
 
     if (expiry.length < 5) {
-      newErrors.expiry = 'Geçerli bir tarih girin.';
+      newErrors.expiry = t('checkout.err_valid_date');
       isValid = false;
     } else {
       const [month, year] = expiry.split('/');
@@ -73,13 +77,13 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
       const now = new Date();
       now.setHours(0, 0, 0, 0);
       if (expiryDate < now) {
-        newErrors.expiry = 'Geçmiş tarih seçilemez.';
+        newErrors.expiry = t('checkout.err_past_date');
         isValid = false;
       }
     }
 
     if (cvc.length !== 3) {
-      newErrors.cvc = '3 haneli olmalıdır.';
+      newErrors.cvc = t('checkout.err_3_digits');
       isValid = false;
     }
 
@@ -103,7 +107,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
         setSimulationCode(res.data.simulationCode || '');
         setStep(2);
       } catch (err: any) {
-        setApiError(err.response?.data?.message || 'Ödeme isteği başarısız oldu. Lütfen tekrar deneyin.');
+        setApiError(err.response?.data?.message || t('checkout.err_payment_failed'));
       } finally {
         setLoading(false);
       }
@@ -117,7 +121,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
         await api.post('/wallet/verify-load', { code: verificationCode });
         onSuccess();
       } catch (err: any) {
-        setApiError(err.response?.data?.message || 'Doğrulama başarısız oldu. Lütfen tekrar deneyin.');
+        setApiError(err.response?.data?.message || t('checkout.err_verify_failed'));
       } finally {
         setLoading(false);
       }
@@ -142,16 +146,19 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
     <Dialog 
       open={open} 
       onClose={handleClose}
-      PaperProps={{
-        sx: {
-          background: 'rgba(15, 23, 42, 0.95)',
-          backdropFilter: 'blur(16px)',
-          border: '1px solid rgba(255, 255, 255, 0.1)',
-          borderRadius: '24px',
-          boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
-          maxWidth: 450,
-          width: '100%',
-          overflow: 'hidden'
+      fullWidth
+      maxWidth="sm"
+      slotProps={{
+        paper: {
+          sx: {
+            background: 'rgba(15, 23, 42, 0.95)',
+            backdropFilter: 'blur(16px)',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '24px',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+            width: '100%',
+            overflow: 'hidden'
+          }
         }
       }}
     >
@@ -168,10 +175,10 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
           </Box>
           <Box>
             <Typography variant="h6" sx={{ fontSize: '1.1rem', fontWeight: 800, m: 0 }}>
-              Güvenli Ödeme
+              {t('checkout.title_secure_payment')}
             </Typography>
             <Typography variant="caption" color="text.secondary">
-              {capitalize(tier)} Plan • {price.toLocaleString('tr-TR')} ₺/ay
+              {capitalize(tier)} Plan • {formatMoney(price, "TRY")}
             </Typography>
           </Box>
         </Box>
@@ -198,15 +205,15 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
           </Typography>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end' }}>
             <Box>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6rem', textTransform: 'uppercase' }}>Kart Sahibi</Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6rem', textTransform: 'uppercase' }}>{t('checkout.card_holder')}</Typography>
               <Typography sx={{ fontFamily: 'monospace', fontSize: '0.9rem', color: cardName ? '#fff' : 'rgba(255,255,255,0.3)', textTransform: 'uppercase' }}>
-                {cardName || 'AD SOYAD'}
+                {cardName || t('checkout.card_holder_placeholder')}
               </Typography>
             </Box>
             <Box>
-              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6rem', textTransform: 'uppercase' }}>SKT</Typography>
+              <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.5)', fontSize: '0.6rem', textTransform: 'uppercase' }}>{t('checkout.expiry_label')}</Typography>
               <Typography sx={{ fontFamily: 'monospace', fontSize: '0.9rem', color: expiry ? '#fff' : 'rgba(255,255,255,0.3)' }}>
-                {expiry || 'AA/YY'}
+                {expiry || t('checkout.expiry_placeholder')}
               </Typography>
             </Box>
           </Box>
@@ -217,9 +224,9 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
         <DialogContent sx={{ p: 3 }}>
           {step === 1 ? (
             <Grid container spacing={2}>
-              <Grid item xs={12}>
+              <Grid xs={12}>
                 <TextField
-                  label="Kart Üzerindeki İsim"
+                  label={t('checkout.label_card_name')}
                   value={cardName}
                   onChange={(e) => setCardName(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
                   fullWidth
@@ -229,44 +236,47 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
                   helperText={errors.cardName}
                 />
                 <TextField
-                  label="Kart Numarası"
+                  label={t('checkout.label_card_number')}
                   value={cardNumber}
                   onChange={(e) => setCardNumber(formatCardNumber(e.target.value))}
                   fullWidth
                   variant="filled"
                   margin="normal"
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><CreditCard /></InputAdornment>,
+                  slotProps={{
+                    input: {
+                      startAdornment: <InputAdornment position="start"><CreditCard /></InputAdornment>,
+                    },
+                    htmlInput: { maxLength: 19 }
                   }}
-                  inputProps={{ maxLength: 19 }}
                   error={!!errors.cardNumber}
                   helperText={errors.cardNumber}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid xs={6}>
                 <TextField
-                  label="Son Kul. Tarihi (AA/YY)"
+                  label={t('checkout.label_expiry')}
                   value={expiry}
                   onChange={(e) => setExpiry(formatExpiry(e.target.value))}
                   fullWidth
                   variant="filled"
                   margin="normal"
-                  placeholder="AA/YY"
+                  placeholder={t('checkout.expiry_placeholder')}
                   error={!!errors.expiry}
                   helperText={errors.expiry}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid xs={6}>
                 <TextField
-                  label="CVC"
+                  label={t('checkout.label_cvc')}
                   value={cvc}
                   onChange={(e) => setCvc(e.target.value.replace(/[^0-9]/g, '').slice(0, 3))}
                   fullWidth
                   variant="filled"
                   margin="normal"
-                  
-                  InputProps={{
-                    startAdornment: <InputAdornment position="start"><Lock /></InputAdornment>,
+                  slotProps={{
+                    input: {
+                      startAdornment: <InputAdornment position="start"><Lock /></InputAdornment>,
+                    }
                   }}
                   inputProps={{ maxLength: 3 }}
                   error={!!errors.cvc}
@@ -277,18 +287,18 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
           ) : (
             <Box sx={{ textAlign: 'center' }}>
               <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
-                Lütfen e-posta adresinize gönderilen 6 haneli güvenlik kodunu giriniz.
+                {t('checkout.desc_verification')}
               </Typography>
               {simulationCode && (
                 <Box sx={{ p: 1, mb: 2, background: 'rgba(16, 185, 129, 0.1)', border: '1px dashed #10b981', borderRadius: '8px' }}>
                   <Typography variant="caption" sx={{ color: '#10b981', fontWeight: 700 }}>
-                    SIMÜLASYON KODU: {simulationCode}
+                    {t('checkout.sim_code')}: {simulationCode}
                   </Typography>
                 </Box>
               )}
               <TextField
                 fullWidth
-                label="Güvenlik Kodu"
+                label={t('checkout.label_security_code')}
                 variant="outlined"
                 value={verificationCode}
                 onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
@@ -313,7 +323,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
           <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 3, justifyContent: 'center' }}>
             <Lock sx={{ fontSize: 16, color: 'text.secondary' }} />
             <Typography variant="caption" color="text.secondary">
-              Ödemeniz 256-bit SSL sertifikası ile şifrelenmektedir.
+              {t('checkout.ssl_info')}
             </Typography>
           </Box>
         </DialogContent>
@@ -337,7 +347,7 @@ export default function CheckoutModal({ open, onClose, tier, price, onSuccess }:
               }
             }}
           >
-            {loading ? <CircularProgress size={24} color="inherit" /> : (step === 1 ? `Ödemeyi Onayla (${price.toLocaleString('tr-TR')} ₺)` : "Doğrula ve Bitir")}
+            {loading ? <CircularProgress size={24} color="inherit" /> : (step === 1 ? `${t('checkout.btn_confirm_payment')} (${formatMoney(price, "TRY")})` : t('checkout.btn_verify_finish'))}
           </Button>
         </DialogActions>
       </form>

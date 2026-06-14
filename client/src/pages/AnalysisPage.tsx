@@ -35,6 +35,7 @@ import {
   AutoAwesome,
   EventAvailable,
   Star,
+  CheckCircle,
 } from "@mui/icons-material";
 import { useTranslation, Trans } from "react-i18next";
 

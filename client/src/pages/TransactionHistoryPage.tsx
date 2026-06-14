@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { api } from "../api";
 import type { TransactionItem } from "../types";
 import { FilterList, History } from "@mui/icons-material";
+import { Box, Typography, Paper, Grid, FormControl, InputLabel, Select, MenuItem, TextField, Button, CircularProgress, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, Chip, Pagination } from "@mui/material";
 import EmptyState from "../components/EmptyState";
 import { useTranslation } from "react-i18next";
 import { useCurrency } from "../contexts/CurrencyContext";

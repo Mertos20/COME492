@@ -162,6 +162,7 @@
     "type_market": "Piyasa (Market)",
     "type_limit": "Limit (Hedef Fiyat)",
     "type_stop": "Stop-Loss (Zarar Kes)",
+    "available": "Kullanılabilir:",
     "quantity": "Miktar",
     "target_price": "Hedef Fiyat (TRY)",
     "current_price": "Güncel Fiyat",
@@ -276,7 +277,7 @@
     "error_invalid_iban": "Lütfen 26 karakterlik geçerli bir IBAN girin.",
     "error_invalid_name": "Lütfen hesap sahibinin adını tam girin.",
     "error_withdraw_failed": "Para çekme işlemi başarısız.",
-    "success_deposit": "{{val}} ₺ başarıyla yüklendi!",
+    "success_deposit": "{{val}} başarıyla yüklendi!",
     "success_withdraw": "Para çekme talebiniz başarıyla alındı."
   },
   "transactions": {
@@ -486,5 +487,83 @@
         "Özel etkinliklere davet"
       ]
     }
+  },
+  "checkout": {
+    "err_letters_only": "Sadece harf girilebilir.",
+    "err_16_digits": "16 haneli olmalıdır.",
+    "err_valid_date": "Geçerli bir tarih girin.",
+    "err_past_date": "Geçmiş tarih seçilemez.",
+    "err_3_digits": "3 haneli olmalıdır.",
+    "err_payment_failed": "Ödeme isteği başarısız oldu. Lütfen tekrar deneyin.",
+    "err_verify_failed": "Doğrulama başarısız oldu. Lütfen tekrar deneyin.",
+    "title_secure_payment": "Güvenli Ödeme",
+    "card_holder": "Kart Sahibi",
+    "card_holder_placeholder": "AD SOYAD",
+    "expiry_label": "SKT",
+    "expiry_placeholder": "AA/YY",
+    "label_card_name": "Kart Üzerindeki İsim",
+    "label_card_number": "Kart Numarası",
+    "label_expiry": "Son Kul. Tarihi (AA/YY)",
+    "label_cvc": "CVC",
+    "desc_verification": "Lütfen e-posta adresinize gönderilen 6 haneli güvenlik kodunu giriniz.",
+    "sim_code": "SİMÜLASYON KODU",
+    "label_security_code": "Güvenlik Kodu",
+    "ssl_info": "Ödemeniz 256-bit SSL sertifikası ile şifrelenmektedir.",
+    "btn_confirm_payment": "Ödemeyi Onayla",
+    "btn_verify_finish": "Doğrula ve Bitir"
+  },
+  "watchlist": {
+    "title": "İzleme Listesi",
+    "subtitle": "Favori varlıklarınızı takip edin",
+    "empty_title": "İzleme Listeniz Boş",
+    "empty_desc": "Yakından takip etmek istediğiniz varlıkları ekleyebilirsiniz.",
+    "btn_go_markets": "Piyasalara Git",
+    "instruments_count": "Varlık",
+    "cat_crypto": "Kripto",
+    "cat_forex": "Döviz",
+    "cat_gold": "Altın",
+    "cat_silver": "Gümüş",
+    "table_instrument": "Varlık",
+    "table_category": "Kategori",
+    "table_price": "Fiyat",
+    "table_change_30d": "30G Değişim",
+    "table_trend": "Trend",
+    "table_action": "İşlem",
+    "error_fetch": "İzleme listesi alınamadı",
+    "error_toggle": "İzleme listesi güncellenemedi"
+  },
+  "transactions": {
+    "title": "İşlem Geçmişi",
+    "subtitle": "Geçmişte yaptığınız tüm alım, satım ve bakiye işlemlerini görüntüleyin",
+    "empty_title": "İşlem Bulunamadı",
+    "empty_desc": "Seçili kriterlere uygun işlem geçmişi bulunmamaktadır.",
+    "btn_filter": "Filtrele",
+    "filter_type": "İşlem Tipi",
+    "filter_type_all": "Tümü",
+    "filter_type_buy": "Alış",
+    "filter_type_sell": "Satış",
+    "filter_type_deposit": "Para Yatırma",
+    "filter_type_withdraw": "Para Çekme",
+    "filter_type_upgrade": "Üyelik Yükseltme",
+    "filter_symbol": "Varlık Sembolü (Örn: BTCUSDT)",
+    "filter_date_from": "Başlangıç Tarihi",
+    "filter_date_to": "Bitiş Tarihi",
+    "table_date": "Tarih",
+    "table_type": "İşlem",
+    "table_symbol": "Sembol",
+    "table_amount": "Miktar",
+    "table_price": "Birim Fiyat",
+    "table_total": "Toplam Tutar",
+    "error_fetch": "İşlem geçmişi alınamadı"
+  },
+  "advisor": {
+    "title": "Yapay Zeka Uzmanı",
+    "subtitle": "Finansal konularda anında uzman görüşü alın",
+    "btn_upgrade": "Yükselt",
+    "tab_ai": "Yapay Zeka"
+  },
+  "profile": {
+    "title": "Profil Yönetimi",
+    "subtitle": "Kişisel bilgilerinizi ve hesap ayarlarınızı güncelleyin"
   }
 }

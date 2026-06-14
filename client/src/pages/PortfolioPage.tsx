@@ -161,7 +161,7 @@ export default function PortfolioPage() {
       <Typography variant="body2" sx={{ color: 'text.secondary', mb: 3 }}>{t('portfolio.subtitle')}</Typography>
 
       <Grid container spacing={2} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', background: totalPnl >= 0 ? 'linear-gradient(135deg, rgba(16,185,129,0.08) 0%, rgba(16,185,129,0.02) 100%)' : 'linear-gradient(135deg, rgba(239,68,68,0.08) 0%, rgba(239,68,68,0.02) 100%)', border: `1px solid ${totalPnl >= 0 ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`, animation: 'slideUp 0.5s ease-out' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
               <Assessment sx={{ color: 'text.secondary', fontSize: 20 }} />
@@ -174,7 +174,7 @@ export default function PortfolioPage() {
             </Box>
           </Paper>
         </Grid>
-        <Grid item xs={12} md={6}>
+        <Grid xs={12} md={6}>
           <Paper elevation={0} sx={{ p: 3, height: '100%', background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)', animation: 'slideUp 0.5s ease-out' }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1.5 }}>
               <AccountBalance sx={{ color: 'text.secondary', fontSize: 20 }} />
@@ -254,7 +254,7 @@ export default function PortfolioPage() {
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>{t('portfolio.realized_vs_unrealized')}</Typography>
         <Grid container spacing={2} sx={{ mb: 3 }}>
           {/* Unrealized PnL Card */}
-          <Grid item xs={12} md={6}>
+          <Grid xs={12} md={6}>
             <Paper
               elevation={0}
               sx={{
@@ -283,7 +283,7 @@ export default function PortfolioPage() {
           </Grid>
 
           {/* Realized PnL Card */}
-          <Grid item xs={12} md={6}>
+          <Grid xs={12} md={6}>
             <Paper
               elevation={0}
               sx={{
