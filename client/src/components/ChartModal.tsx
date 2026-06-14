@@ -23,7 +23,7 @@ export default function ChartModal({ open, onClose, title, symbol, data, change3
   const strokeColor = isPositive ? "#10b981" : "#ef4444";
 
   return (
-    <Dialog open={open} onClose={onClose} maxWidth="md" fullWidth>
+    <Dialog open={open} onClose={onClose} maxWidth="lg" fullWidth>
       <DialogTitle sx={{ pb: 1 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 1 }}>
           <Box>
@@ -56,7 +56,7 @@ export default function ChartModal({ open, onClose, title, symbol, data, change3
         </Box>
       </DialogTitle>
 
-      <DialogContent sx={{ height: 380 }}>
+      <DialogContent sx={{ height: 450 }}>
         <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 600, mb: 1, display: 'block' }}>30 Günlük Fiyat Hareketi</Typography>
         <ResponsiveContainer width="100%" height="90%">
           <AreaChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 0 }}>

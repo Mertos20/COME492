@@ -3,7 +3,7 @@ import { Link as RouterLink } from "react-router-dom";
 import { api } from "../api";
 import type { PortfolioSummary } from "../types";
 import { Grid, Paper, Typography, Box, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Button, Card, CardContent, CardActionArea } from "@mui/material";
-import { AccountBalanceWallet, ShowChart, Receipt, People, WorkspacePremium, AddCard, TrendingUp, TrendingDown, SportsEsports } from '@mui/icons-material';
+import { AccountBalanceWallet, ShowChart, Receipt, People, WorkspacePremium, AddCard, TrendingUp, TrendingDown, Radar } from '@mui/icons-material';
 import LoadingSkeleton from "../components/LoadingSkeleton";
 
 const formatMoney = (value: number): string =>
@@ -177,7 +177,7 @@ export default function DashboardPage() {
       { title: "İşlem Geçmişi", to: "/transactions", description: "Tüm işlemlerinizi görün", icon: <Receipt /> },
       { title: "Danışmanlar", to: "/chat", description: "Uzmanlarla iletişim kurun", icon: <People /> },
       { title: "Üyelikler", to: "/subscriptions", description: "Premium özellikler için", icon: <WorkspacePremium /> },
-      { title: "Eğlence", to: "/game", description: "Borsa Kahini oyunu oyna", icon: <SportsEsports /> },
+      { title: "Tahmin Modülü", to: "/game", description: "Piyasa yönünü analiz edin", icon: <Radar /> },
   ]
 
   return (

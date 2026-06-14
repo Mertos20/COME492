@@ -1,5 +1,5 @@
 import { Link, useNavigate, useLocation } from "react-router-dom";
-import React, { ReactNode, useState } from "react";
+import React, { ReactNode, useState, useEffect } from "react";
 import type { AuthUser } from "../types";
 import {
   Box,
@@ -28,20 +28,51 @@ import {
   AddCard,
   AdminPanelSettings,
   TrendingUp,
+  TrendingDown,
   Person,
   Assessment,
   Star,
   DarkMode,
   LightMode,
-  SportsEsports,
+  Radar,
+  CalendarToday,
+  Public,
 } from "@mui/icons-material";
 import NotificationBell from "./NotificationBell";
 import { useThemeMode } from "../contexts/ThemeContext";
+import { useMarket } from "../contexts/MarketContext";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: "currency", currency: "TRY" }).format(
     value
   );
+
+const getPageInfo = (path: string) => {
+  if (path === '/') return { title: 'Dashboard', subtitle: 'Portföy Özeti' };
+  if (path.startsWith('/markets')) return { title: 'Piyasalar', subtitle: 'Canlı Veriler' };
+  if (path.startsWith('/trading')) return { title: 'Al / Sat', subtitle: 'İşlem Terminali' };
+  if (path.startsWith('/portfolio')) return { title: 'Portföy', subtitle: 'Varlık Detayları' };
+  if (path.startsWith('/watchlist')) return { title: 'Favoriler', subtitle: 'İzleme Listesi' };
+  if (path.startsWith('/transactions')) return { title: 'İşlem Geçmişi', subtitle: 'Aktivite Dökümü' };
+  if (path.startsWith('/chat')) return { title: 'Danışmanlar', subtitle: 'Uzman & AI Destek' };
+  if (path.startsWith('/analysis')) return { title: 'Analiz & Raporlar', subtitle: 'Premium İçerikler' };
+  if (path.startsWith('/game')) return { title: 'Tahmin Modülü', subtitle: 'Piyasa Simülasyonu' };
+  if (path.startsWith('/load-balance')) return { title: 'Cüzdan', subtitle: 'Bakiye Yönetimi' };
+  if (path.startsWith('/profile')) return { title: 'Profil', subtitle: 'Hesap Ayarları' };
+  if (path.startsWith('/subscriptions')) return { title: 'Üyelikler', subtitle: 'Premium Planlar' };
+  if (path.startsWith('/admin')) return { title: 'Admin Paneli', subtitle: 'Sistem Yönetimi' };
+  if (path.startsWith('/expert')) return { title: 'Uzman Paneli', subtitle: 'Kullanıcı Danışmanlığı' };
+  if (path.startsWith('/news')) return { title: 'Haberler', subtitle: 'Güncel Akış' };
+  return { title: 'portfol.io', subtitle: 'Yatırım Platformu' };
+};
+
+const worldClocks = [
+  { label: "New York", timeZone: "America/New_York" },
+  { label: "Londra", timeZone: "Europe/London" },
+  { label: "Tokyo", timeZone: "Asia/Tokyo" },
+  { label: "Sidney", timeZone: "Australia/Sydney" },
+  { label: "İstanbul", timeZone: "Europe/Istanbul" }
+];
 
 interface LayoutProps {
   user: AuthUser | null;
@@ -70,8 +101,25 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const [collapsed, setCollapsed] = useState(false);
   const { mode, toggleTheme } = useThemeMode();
   const isDark = mode === 'dark';
+  const { instruments } = useMarket();
+  const [tickerIndex, setTickerIndex] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setTickerIndex(prev => prev + 1);
+    }, 3000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const tickerItems = instruments.filter(i => ["BTCUSDT", "ETHUSDT", "XAUUSD", "USDTRY"].includes(i.symbol));
+  const displayItems = tickerItems.length > 0 ? tickerItems : instruments.slice(0, 4);
+  const currentTicker = displayItems.length > 0 ? displayItems[tickerIndex % displayItems.length] : null;
+  const pageInfo = getPageInfo(location.pathname);
+  const currentClock = worldClocks[tickerIndex % worldClocks.length];
+  const clockTime = new Intl.DateTimeFormat('tr-TR', { timeZone: currentClock.timeZone, hour: '2-digit', minute: '2-digit' }).format(new Date());
 
   const baseLinks: NavItem[] = user?.isAdmin
     ? [
@@ -92,7 +140,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           { path: "/trading", label: "Al/Sat", icon: <SwapHoriz /> },
           { path: "/chat", label: "Danışmanlar", icon: <People /> },
           { path: "/analysis", label: "Analiz & Raporlar", icon: <Assessment /> },
-          { path: "/game", label: "Borsa Kahini", icon: <SportsEsports /> },
+          { path: "/game", label: "Tahmin Modülü", icon: <Radar /> },
         ]
       : user?.role === "expert" ? [
           { path: "/expert", label: "Uzman Paneli", icon: <AdminPanelSettings /> },
@@ -101,16 +149,20 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
 
   const allLinks = [...baseLinks, ...userLinks].filter(link => !link.adminOnly || (link.adminOnly && user?.isAdmin));
 
+  const sidebarWidth = collapsed && !isMobile ? 88 : 260;
+
   const sidebarContent = (
     <Box
       sx={{
-        width: 260,
+        width: isMobile ? 260 : sidebarWidth,
         height: '100%',
         display: 'flex',
         flexDirection: 'column',
         background: isDark ? 'rgba(10, 14, 39, 0.95)' : 'rgba(255, 255, 255, 0.95)',
         backdropFilter: 'blur(20px)',
         borderRight: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
+        transition: 'width 0.3s ease',
+        overflowX: 'hidden',
       }}
     >
       {/* Logo */}
@@ -120,6 +172,7 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           pb: 2,
           display: 'flex',
           alignItems: 'center',
+        justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
           gap: 1.5,
           cursor: 'pointer',
         }}
@@ -138,24 +191,26 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
         >
           <TrendingUp sx={{ color: '#fff', fontSize: 24 }} />
         </Box>
-        <Box>
-          <Typography
-            variant="h6"
-            sx={{
-              fontWeight: 800,
-              fontSize: '1.2rem',
-              background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              lineHeight: 1.2,
-            }}
-          >
-            portfol.io
-          </Typography>
-          <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
-            YATIRIM PLATFORMU
-          </Typography>
-        </Box>
+        {(!collapsed || isMobile) && (
+          <Box sx={{ whiteSpace: 'nowrap' }}>
+            <Typography
+              variant="h6"
+              sx={{
+                fontWeight: 800,
+                fontSize: '1.2rem',
+                background: 'linear-gradient(135deg, #00d4ff 0%, #7c3aed 100%)',
+                WebkitBackgroundClip: 'text',
+                WebkitTextFillColor: 'transparent',
+                lineHeight: 1.2,
+              }}
+            >
+              portfol.io
+            </Typography>
+            <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem' }}>
+              YATIRIM PLATFORMU
+            </Typography>
+          </Box>
+        )}
         {isMobile && (
           <IconButton onClick={() => setDrawerOpen(false)} sx={{ ml: 'auto', color: 'text.secondary' }}>
             <Close />
@@ -164,35 +219,36 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
       </Box>
 
       {/* Navigation */}
-      <Box sx={{ flex: 1, px: 1.5, py: 1, overflowY: 'auto' }}>
-        <Typography
-          variant="caption"
-          sx={{
-            px: 1.5,
-            py: 1,
-            display: 'block',
-            color: 'text.secondary',
-            fontSize: '0.65rem',
-            fontWeight: 700,
-            textTransform: 'uppercase',
-            letterSpacing: '0.1em',
-          }}
-        >
-          Ana Menü
-        </Typography>
+      <Box sx={{ flex: 1, px: collapsed && !isMobile ? 1 : 1.5, py: 1, overflowY: 'auto', overflowX: 'hidden' }}>
+        {(!collapsed || isMobile) && (
+          <Typography
+            variant="caption"
+            sx={{
+              px: 1.5,
+              py: 1,
+              display: 'block',
+              color: 'text.secondary',
+              fontSize: '0.65rem',
+              fontWeight: 700,
+              textTransform: 'uppercase',
+              letterSpacing: '0.1em',
+            }}
+          >
+            Ana Menü
+          </Typography>
+        )}
         {allLinks.map((link) => {
           const isActive = location.pathname === link.path;
-          return (
+          const content = (
             <Box
-              key={link.path}
               component={Link}
               to={link.path}
               onClick={() => { if (isMobile) setDrawerOpen(false); }}
               sx={{
                 display: 'flex',
                 alignItems: 'center',
-                gap: 1.5,
-                px: 1.5,
+                justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
+                px: collapsed && !isMobile ? 0 : 1.5,
                 py: 1.2,
                 mb: 0.3,
                 borderRadius: '10px',
@@ -220,106 +276,87 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               }}
             >
               <Box sx={{ display: 'flex', opacity: isActive ? 1 : 0.7, fontSize: '1.25rem' }}>{link.icon}</Box>
-              <Typography variant="body2" sx={{ fontWeight: isActive ? 700 : 500, fontSize: '0.85rem' }}>
-                {link.label}
-              </Typography>
+              {(!collapsed || isMobile) && (
+                <Typography variant="body2" sx={{ ml: 1.5, fontWeight: isActive ? 700 : 500, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                  {link.label}
+                </Typography>
+              )}
             </Box>
+          );
+          return collapsed && !isMobile ? (
+            <Tooltip key={link.path} title={link.label} placement="right" arrow>
+              {content}
+            </Tooltip>
+          ) : (
+            <React.Fragment key={link.path}>{content}</React.Fragment>
           );
         })}
 
         {user?.role === "user" && !user.isAdmin && (
           <>
-            <Typography
-              variant="caption"
-              sx={{
-                px: 1.5,
-                py: 1,
-                mt: 2,
-                display: 'block',
-                color: 'text.secondary',
-                fontSize: '0.65rem',
-                fontWeight: 700,
-                textTransform: 'uppercase',
-                letterSpacing: '0.1em',
-              }}
-            >
-              Hızlı İşlemler
-            </Typography>
-            <Box
-              component={Link}
-              to="/subscriptions"
-              onClick={() => { if (isMobile) setDrawerOpen(false); }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                px: 1.5,
-                py: 1.2,
-                mb: 0.3,
-                borderRadius: '10px',
-                textDecoration: 'none',
-                color: location.pathname === '/subscriptions' ? '#7c3aed' : '#94a3b8',
-                backgroundColor: location.pathname === '/subscriptions' ? 'rgba(124, 58, 237, 0.08)' : 'transparent',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(124, 58, 237, 0.08)',
-                  color: '#9655f5',
-                },
-              }}
-            >
-              <WorkspacePremium sx={{ opacity: 0.7 }} />
-              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>Üyelikler</Typography>
-            </Box>
-            <Box
-              component={Link}
-              to="/load-balance"
-              onClick={() => { if (isMobile) setDrawerOpen(false); }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                px: 1.5,
-                py: 1.2,
-                mb: 0.3,
-                borderRadius: '10px',
-                textDecoration: 'none',
-                color: location.pathname === '/load-balance' ? '#10b981' : '#94a3b8',
-                backgroundColor: location.pathname === '/load-balance' ? 'rgba(16, 185, 129, 0.08)' : 'transparent',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(16, 185, 129, 0.08)',
-                  color: '#34d399',
-                },
-              }}
-            >
-              <AddCard sx={{ opacity: 0.7 }} />
-              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>Bakiye Yükle</Typography>
-            </Box>
-            <Box
-              component={Link}
-              to="/profile"
-              onClick={() => { if (isMobile) setDrawerOpen(false); }}
-              sx={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 1.5,
-                px: 1.5,
-                py: 1.2,
-                mb: 0.3,
-                borderRadius: '10px',
-                textDecoration: 'none',
-                color: location.pathname === '/profile' ? '#00d4ff' : '#94a3b8',
-                backgroundColor: location.pathname === '/profile' ? 'rgba(0, 212, 255, 0.08)' : 'transparent',
-                transition: 'all 0.2s ease',
-                '&:hover': {
-                  backgroundColor: 'rgba(0, 212, 255, 0.08)',
-                  color: '#33ddff',
-                },
-              }}
-            >
-              <Person sx={{ opacity: 0.7 }} />
-              <Typography variant="body2" sx={{ fontWeight: 500, fontSize: '0.85rem' }}>Profil</Typography>
-            </Box>
+            {(!collapsed || isMobile) && (
+              <Typography
+                variant="caption"
+                sx={{
+                  px: 1.5,
+                  py: 1,
+                  mt: 2,
+                  display: 'block',
+                  color: 'text.secondary',
+                  fontSize: '0.65rem',
+                  fontWeight: 700,
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.1em',
+                }}
+              >
+                Hızlı İşlemler
+              </Typography>
+            )}
+            {[
+              { path: '/subscriptions', label: 'Üyelikler', icon: <WorkspacePremium sx={{ opacity: 0.7 }} />, color: '#7c3aed', bgHover: 'rgba(124, 58, 237, 0.08)' },
+              { path: '/load-balance', label: 'Bakiye Yükle', icon: <AddCard sx={{ opacity: 0.7 }} />, color: '#10b981', bgHover: 'rgba(16, 185, 129, 0.08)' },
+              { path: '/profile', label: 'Profil', icon: <Person sx={{ opacity: 0.7 }} />, color: '#00d4ff', bgHover: 'rgba(0, 212, 255, 0.08)' },
+            ].map(link => {
+              const isActive = location.pathname === link.path;
+              const content = (
+                <Box
+                  component={Link}
+                  to={link.path}
+                  onClick={() => { if (isMobile) setDrawerOpen(false); }}
+                  sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: collapsed && !isMobile ? 'center' : 'flex-start',
+                    px: collapsed && !isMobile ? 0 : 1.5,
+                    py: 1.2,
+                    mb: 0.3,
+                    borderRadius: '10px',
+                    textDecoration: 'none',
+                    color: isActive ? link.color : '#94a3b8',
+                    backgroundColor: isActive ? link.bgHover : 'transparent',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      backgroundColor: isActive ? link.bgHover : 'rgba(255, 255, 255, 0.04)',
+                      color: isActive ? link.color : '#e2e8f0',
+                    },
+                  }}
+                >
+                  <Box sx={{ display: 'flex' }}>{link.icon}</Box>
+                  {(!collapsed || isMobile) && (
+                    <Typography variant="body2" sx={{ ml: 1.5, fontWeight: 500, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
+                      {link.label}
+                    </Typography>
+                  )}
+                </Box>
+              );
+              return collapsed && !isMobile ? (
+                <Tooltip key={link.path} title={link.label} placement="right" arrow>
+                  {content}
+                </Tooltip>
+              ) : (
+                <React.Fragment key={link.path}>{content}</React.Fragment>
+              );
+            })}
           </>
         )}
       </Box>
@@ -328,15 +365,18 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
       {user && (
         <Box
           sx={{
-            p: 2,
-            mx: 1.5,
+            p: collapsed && !isMobile ? 1 : 2,
+            mx: collapsed && !isMobile ? 1 : 1.5,
             mb: 1.5,
             borderRadius: '12px',
             background: 'rgba(255, 255, 255, 0.03)',
             border: '1px solid rgba(255, 255, 255, 0.06)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: collapsed && !isMobile ? 'center' : 'stretch',
           }}
         >
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 1.5 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: collapsed && !isMobile ? 0 : 1.5 }}>
             <Avatar
               sx={{
                 width: 36,
@@ -347,25 +387,27 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
             >
               {user.fullName.charAt(0).toUpperCase()}
             </Avatar>
-            <Box sx={{ flex: 1, minWidth: 0 }}>
-              <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {user.fullName}
-              </Typography>
-              <Chip
-                label={(user.membership || "free").toUpperCase()}
-                size="small"
-                sx={{
-                  height: 18,
-                  fontSize: '0.6rem',
-                  fontWeight: 700,
-                  backgroundColor: `${tierColors[user.membership]}20`,
-                  color: tierColors[user.membership],
-                  border: `1px solid ${tierColors[user.membership]}40`,
-                }}
-              />
-            </Box>
+            {(!collapsed || isMobile) && (
+              <Box sx={{ flex: 1, minWidth: 0 }}>
+                <Typography variant="body2" sx={{ fontWeight: 600, fontSize: '0.8rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  {user.fullName}
+                </Typography>
+                <Chip
+                  label={(user.membership || "free").toUpperCase()}
+                  size="small"
+                  sx={{
+                    height: 18,
+                    fontSize: '0.6rem',
+                    fontWeight: 700,
+                    backgroundColor: `${tierColors[user.membership]}20`,
+                    color: tierColors[user.membership],
+                    border: `1px solid ${tierColors[user.membership]}40`,
+                  }}
+                />
+              </Box>
+            )}
           </Box>
-          {user.role === "user" && !user.isAdmin && (
+          {user.role === "user" && !user.isAdmin && (!collapsed || isMobile) && (
             <Box
               sx={{
                 p: 1,
@@ -391,26 +433,47 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               </Typography>
             </Box>
           )}
-          <Button
-            fullWidth
-            variant="outlined"
-            size="small"
-            startIcon={<Logout sx={{ fontSize: '1rem !important' }} />}
-            onClick={onLogout}
-            sx={{
-              fontSize: '0.75rem',
-              py: 0.7,
-              color: '#94a3b8',
-              borderColor: 'rgba(255, 255, 255, 0.1)',
-              '&:hover': {
-                borderColor: 'rgba(239, 68, 68, 0.4)',
-                color: '#ef4444',
-                backgroundColor: 'rgba(239, 68, 68, 0.05)',
-              },
-            }}
-          >
-            Çıkış Yap
-          </Button>
+          {(!collapsed || isMobile) ? (
+            <Button
+              fullWidth
+              variant="outlined"
+              size="small"
+              startIcon={<Logout sx={{ fontSize: '1rem !important' }} />}
+              onClick={onLogout}
+              sx={{
+                fontSize: '0.75rem',
+                py: 0.7,
+                color: '#94a3b8',
+                borderColor: 'rgba(255, 255, 255, 0.1)',
+                '&:hover': {
+                  borderColor: 'rgba(239, 68, 68, 0.4)',
+                  color: '#ef4444',
+                  backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                },
+              }}
+            >
+              Çıkış Yap
+            </Button>
+          ) : (
+            <Tooltip title="Çıkış Yap" placement="right" arrow>
+              <IconButton
+                onClick={onLogout}
+                sx={{
+                  mt: 1,
+                  color: '#94a3b8',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '8px',
+                  '&:hover': {
+                    borderColor: 'rgba(239, 68, 68, 0.4)',
+                    color: '#ef4444',
+                    backgroundColor: 'rgba(239, 68, 68, 0.05)',
+                  },
+                }}
+              >
+                <Logout sx={{ fontSize: '1.2rem' }} />
+              </IconButton>
+            </Tooltip>
+          )}
         </Box>
       )}
     </Box>
@@ -422,13 +485,14 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
       {!isMobile && (
         <Box
           sx={{
-            width: 260,
+            width: sidebarWidth,
             flexShrink: 0,
             position: 'fixed',
             top: 0,
             left: 0,
             bottom: 0,
             zIndex: 1200,
+            transition: 'width 0.3s ease',
           }}
         >
           {sidebarContent}
@@ -457,27 +521,34 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
       <Box
         sx={{
           flex: 1,
-          ml: isMobile ? 0 : '260px',
+          ml: isMobile ? 0 : `${sidebarWidth}px`,
           display: 'flex',
           flexDirection: 'column',
           minHeight: '100vh',
+          transition: 'margin-left 0.3s ease',
         }}
       >
         {/* Top Bar */}
         <Box
           sx={{
-            height: 64,
+              height: 76,
             display: 'flex',
             alignItems: 'center',
-            px: 3,
+              px: { xs: 2, md: 4 },
             borderBottom: isDark ? '1px solid rgba(255, 255, 255, 0.06)' : '1px solid rgba(0, 0, 0, 0.06)',
-            background: isDark ? 'rgba(10, 14, 39, 0.6)' : 'rgba(255, 255, 255, 0.6)',
+              background: isDark ? 'rgba(10, 14, 39, 0.8)' : 'rgba(255, 255, 255, 0.85)',
             backdropFilter: 'blur(20px)',
             position: 'sticky',
             top: 0,
             zIndex: 1100,
+              boxShadow: isDark ? '0 4px 30px rgba(0,0,0,0.5)' : '0 4px 20px rgba(0,0,0,0.05)',
           }}
         >
+          {!isMobile && (
+            <IconButton onClick={() => setCollapsed(!collapsed)} sx={{ mr: 2, color: 'text.secondary' }}>
+              <MenuIcon />
+            </IconButton>
+          )}
           {isMobile && (
             <IconButton onClick={() => setDrawerOpen(true)} sx={{ mr: 1.5, color: 'text.secondary' }}>
               <MenuIcon />
@@ -497,56 +568,103 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
               portfol.io
             </Typography>
           )}
-          <Box sx={{ flex: 1 }} />
+            
+            {/* Center / Page Title Area */}
+            <Box sx={{ flex: 1, display: 'flex', alignItems: 'center', ml: { xs: 0, md: 4 } }}>
+              {!isMobile && user && (
+                <Box key={location.pathname} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, animation: 'fadeIn 0.3s ease-out' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 800, color: 'text.primary', lineHeight: 1 }}>
+                    {pageInfo.title}
+                  </Typography>
+                  <Box sx={{ width: 5, height: 5, borderRadius: '50%', background: isDark ? '#00d4ff' : '#7c3aed' }} />
+                  <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+                    {pageInfo.subtitle}
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
           {user && (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-              <Tooltip title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
-                <IconButton
-                  onClick={toggleTheme}
-                  size="small"
-                  sx={{
-                    color: isDark ? '#f59e0b' : '#6366f1',
-                    background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.08)',
-                    border: isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(99, 102, 241, 0.15)',
-                    transition: 'all 0.3s ease',
-                    '&:hover': {
-                      background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
-                      transform: 'rotate(30deg)',
-                    },
-                  }}
-                >
-                  {isDark ? <LightMode sx={{ fontSize: 20 }} /> : <DarkMode sx={{ fontSize: 20 }} />}
-                </IconButton>
-              </Tooltip>
-              {user.role === "user" && !user.isAdmin && !isMobile && (
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, md: 2.5 } }}>
+                {!isMobile && (
+                  <>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, color: 'text.secondary', p: '6px 12px', borderRadius: '12px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                      <Public sx={{ fontSize: 16, color: '#10b981' }} />
+                      <Typography key={currentClock.label} variant="caption" sx={{ fontWeight: 700, letterSpacing: '0.05em', animation: 'fadeIn 0.5s ease-in-out' }}>
+                        {currentClock.label}: {clockTime}
+                      </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mr: 1, color: 'text.secondary', p: '6px 12px', borderRadius: '12px', background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)', border: isDark ? '1px solid rgba(255,255,255,0.05)' : '1px solid rgba(0,0,0,0.05)' }}>
+                      <CalendarToday sx={{ fontSize: 16, color: '#00d4ff' }} />
+                      <Typography variant="caption" sx={{ fontWeight: 600, letterSpacing: '0.05em' }}>
+                        {new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' })}
+                      </Typography>
+                    </Box>
+                  </>
+                )}
+              {!isMobile && currentTicker && (
                 <Chip
-                  icon={<AccountBalanceWallet sx={{ fontSize: '1rem !important' }} />}
-                  label={formatMoney(balance)}
+                  icon={currentTicker.change30d >= 0 ? <TrendingUp sx={{ color: '#10b981 !important', fontSize: '1.2rem !important' }} /> : <TrendingDown sx={{ color: '#ef4444 !important', fontSize: '1.2rem !important' }} />}
+                  label={
+                    <Box key={currentTicker.symbol} sx={{ display: 'flex', alignItems: 'center', gap: 1, animation: 'fadeIn 0.5s ease-in-out' }}>
+                      <Typography sx={{ fontWeight: 700, fontSize: '0.85rem', color: 'text.secondary' }}>
+                        {currentTicker.symbol.replace('USDT', '').replace('USD', '')}
+                      </Typography>
+                      <Typography sx={{ fontWeight: 800, fontSize: '0.9rem', fontFamily: 'monospace', color: currentTicker.change30d >= 0 ? '#10b981' : '#ef4444' }}>
+                        {formatMoney(currentTicker.price)}
+                      </Typography>
+                    </Box>
+                  }
                   sx={{
-                    background: 'rgba(0, 212, 255, 0.08)',
-                    border: '1px solid rgba(0, 212, 255, 0.15)',
-                    color: '#00d4ff',
-                    fontWeight: 700,
-                    '& .MuiChip-icon': { color: '#00d4ff' },
+                    height: 40,
+                    background: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)',
+                    border: isDark ? '1px solid rgba(255,255,255,0.08)' : '1px solid rgba(0,0,0,0.08)',
+                    px: 1,
+                    transition: 'all 0.3s ease',
                   }}
                 />
               )}
+          <Tooltip title={isDark ? 'Açık Tema' : 'Koyu Tema'}>
+            <IconButton
+              onClick={toggleTheme}
+              size="small"
+              sx={{
+                color: isDark ? '#f59e0b' : '#6366f1',
+                background: isDark ? 'rgba(245, 158, 11, 0.08)' : 'rgba(99, 102, 241, 0.08)',
+                border: isDark ? '1px solid rgba(245, 158, 11, 0.15)' : '1px solid rgba(99, 102, 241, 0.15)',
+                transition: 'all 0.3s ease',
+                '&:hover': {
+                  background: isDark ? 'rgba(245, 158, 11, 0.15)' : 'rgba(99, 102, 241, 0.15)',
+                  transform: 'rotate(30deg)',
+                },
+              }}
+            >
+              {isDark ? <LightMode sx={{ fontSize: 20 }} /> : <DarkMode sx={{ fontSize: 20 }} />}
+            </IconButton>
+          </Tooltip>
               <NotificationBell />
               {!isMobile && (
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, pl: 2, borderLeft: isDark ? '1px solid rgba(255,255,255,0.1)' : '1px solid rgba(0,0,0,0.1)' }}>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                      <Typography variant="caption" sx={{ color: 'text.secondary', fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.05em' }}>
+                        HOŞ GELDİNİZ
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontWeight: 800, color: 'text.primary', fontSize: '0.85rem', lineHeight: 1 }}>
+                        {user.fullName}
+                      </Typography>
+                    </Box>
                   <Avatar
                     sx={{
-                      width: 32,
-                      height: 32,
-                      fontSize: '0.8rem',
+                        width: 40,
+                        height: 40,
+                        fontSize: '1rem',
+                        fontWeight: 800,
+                        border: `2px solid ${tierColors[user.membership] || '#94a3b8'}`,
                       background: `linear-gradient(135deg, ${tierColors[user.membership] || '#94a3b8'}, #7c3aed)`,
                     }}
                   >
                     {user.fullName.charAt(0).toUpperCase()}
                   </Avatar>
-                  <Typography variant="body2" sx={{ fontWeight: 600, color: 'text.primary', fontSize: '0.85rem' }}>
-                    {user.fullName}
-                  </Typography>
                 </Box>
               )}
             </Box>
@@ -558,8 +676,8 @@ export default function Layout({ user, balance, onLogout, children }: LayoutProp
           component="main"
           sx={{
             flex: 1,
-            p: { xs: 2, sm: 3 },
-            maxWidth: 1400,
+          p: { xs: 2, sm: 3, md: 4 },
+          maxWidth: '100%',
             width: '100%',
             mx: 'auto',
             animation: 'fadeIn 0.4s ease-out',

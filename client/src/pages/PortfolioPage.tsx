@@ -167,7 +167,7 @@ export default function PortfolioPage() {
 
       <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.06)' }}>
         <Typography variant="h6" sx={{ fontWeight: 700, mb: 2 }}>Kazanç / Zarar Grafiği</Typography>
-        <Box sx={{ width: "100%", height: 320, minHeight: 320 }}>
+        <Box sx={{ width: "100%", height: { xs: 320, md: 450 }, minHeight: { xs: 320, md: 450 } }}>
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={performanceSeries} margin={{ top: 10, right: 20, left: 20, bottom: 0 }}>
               <defs>

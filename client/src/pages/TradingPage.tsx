@@ -8,10 +8,11 @@ import {
   TableHead, TableRow, IconButton
 } from "@mui/material";
 import { 
-  AccountBalanceWallet, SwapHoriz, TrendingUp, TrendingDown, Cancel, NotificationsActive 
+  AccountBalanceWallet, SwapHoriz, TrendingUp, TrendingDown, Cancel, NotificationsActive, Fullscreen, FullscreenExit
 } from "@mui/icons-material";
 import LoadingSkeleton from "../components/LoadingSkeleton";
 import CheckoutModal from "../components/CheckoutModal";
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip as ChartTooltip } from "recharts";
 
 const formatMoney = (value: number): string =>
   new Intl.NumberFormat("tr-TR", { style: 'currency', currency: 'TRY' }).format(value);
@@ -47,6 +48,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [loading, setLoading] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
 
   // Alert state
   const [alertTarget, setAlertTarget] = useState("");
@@ -117,7 +119,8 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
     }
   };
 
-  const handleTrade = async () => {
+  const handleTrade = async (overrideSide?: "buy" | "sell") => {
+    const activeSide = overrideSide || order.side;
     const quantity = Number(order.quantity);
     if (!quantity || quantity <= 0) {
       setError("Geçerli bir miktar girin.");
@@ -136,7 +139,7 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
 
     try {
       const res = await api.post("/trade/order", {
-        side: order.side,
+        side: activeSide,
         symbol: order.symbol,
         quantity,
         type: order.type,
@@ -174,6 +177,10 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
   const estimatedTotal = order.type === "market" 
     ? currentPrice * Number(order.quantity) 
     : Number(order.targetPrice) * Number(order.quantity);
+    
+  const chartData = selectedMarket?.history30d?.map((v, i) => ({ day: i, price: v })) || [];
+  const isPositiveChart = selectedMarket ? selectedMarket.change30d >= 0 : true;
+  const chartColor = isPositiveChart ? '#10b981' : '#ef4444';
 
   return (
     <Grid container spacing={3}>
@@ -181,6 +188,18 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         <Paper sx={{ p: 4, borderRadius: '16px', background: 'rgba(15, 23, 42, 0.6)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.05)' }}>
           <Typography variant="h5" sx={{ mb: 3, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 1 }}>
             <SwapHoriz color="primary" /> Hızlı Al/Sat
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => {
+                setOrder(prev => ({ ...prev, type: 'market' }));
+                setZenMode(true);
+              }}
+              startIcon={<Fullscreen />}
+              sx={{ ml: 'auto', borderColor: 'rgba(255,255,255,0.1)', color: '#00d4ff', '&:hover': { borderColor: '#00d4ff', background: 'rgba(0,212,255,0.1)' } }}
+            >
+              Zen Modu
+            </Button>
           </Typography>
 
           <Box sx={{ display: 'flex', justifyContent: 'center', mb: 4 }}>
@@ -480,6 +499,95 @@ export default function TradingPage({ balance, onTradeComplete }: TradingPagePro
         price={Number(depositAmount) || 0}
         onSuccess={handlePaymentSuccess}
       />
+
+      {/* ZEN MODE FULLSCREEN OVERLAY */}
+      {zenMode && (
+        <Box sx={{
+          position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, zIndex: 9999,
+          background: '#020617', // Very dark cinematic blue/black
+          display: 'flex', flexDirection: 'column',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          {/* Zen Header */}
+          <Box sx={{ px: 4, py: 3, borderBottom: '1px solid rgba(255,255,255,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box>
+              <Typography variant="h3" sx={{ fontWeight: 900, color: '#fff', letterSpacing: '0.05em' }}>{selectedMarket?.symbol}</Typography>
+              <Typography variant="h6" sx={{ color: chartColor, fontWeight: 700 }}>{formatMoney(currentPrice)} ({selectedMarket?.change30d.toFixed(2)}%)</Typography>
+            </Box>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+              <Box sx={{ textAlign: 'right' }}>
+                <Typography variant="caption" sx={{ color: 'text.secondary', textTransform: 'uppercase', letterSpacing: '0.1em' }}>Kullanılabilir Bakiye</Typography>
+                <Typography variant="h5" sx={{ color: '#00d4ff', fontWeight: 900, fontFamily: 'monospace' }}>{formatMoney(balance)}</Typography>
+              </Box>
+              <IconButton onClick={() => setZenMode(false)} sx={{ color: 'text.secondary', background: 'rgba(255,255,255,0.05)', '&:hover': { color: '#fff', background: 'rgba(239, 68, 68, 0.2)' } }}>
+                <FullscreenExit sx={{ fontSize: 36 }} />
+              </IconButton>
+            </Box>
+          </Box>
+
+          {/* Zen Chart */}
+          <Box sx={{ flex: 1, px: 4, py: 2, minHeight: 0 }}>
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="zenGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor={chartColor} stopOpacity={0.4} />
+                    <stop offset="95%" stopColor={chartColor} stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.03)" vertical={false} />
+                <XAxis dataKey="day" hide />
+                <YAxis domain={['auto', 'auto']} stroke="rgba(255,255,255,0.2)" tick={{ fill: '#64748b', fontSize: 14, fontWeight: 700 }} width={100} tickFormatter={(val) => formatMoney(val)} />
+                <ChartTooltip
+                  contentStyle={{ backgroundColor: 'rgba(2,6,23,0.9)', borderColor: 'rgba(255,255,255,0.1)', borderRadius: 12 }}
+                  itemStyle={{ color: chartColor, fontWeight: 900, fontSize: '1.2rem' }}
+                  formatter={(val: number) => [formatMoney(val), 'Fiyat']}
+                  labelStyle={{ display: 'none' }}
+                />
+                <Area type="monotone" dataKey="price" stroke={chartColor} strokeWidth={6} fill="url(#zenGradient)" isAnimationActive={false} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </Box>
+
+          {/* Zen Controls */}
+          <Box sx={{ p: 4, borderTop: '1px solid rgba(255,255,255,0.05)', display: 'flex', gap: 4, alignItems: 'center', background: 'rgba(255,255,255,0.01)' }}>
+            {/* Inputs */}
+            <Box sx={{ flex: 1, display: 'flex', gap: 3 }}>
+              <TextField
+                label="Miktar"
+                type="number"
+                variant="filled"
+                value={order.quantity}
+                onChange={(e) => setOrder({...order, quantity: e.target.value})}
+                sx={{ maxWidth: 300, flex: 1, background: 'rgba(255,255,255,0.03)', borderRadius: 2, '& .MuiInputBase-input': { color: '#fff', fontSize: '1.8rem', fontWeight: 800, py: 2 }, '& .MuiInputLabel-root': { color: 'text.secondary' } }}
+                InputProps={{ disableUnderline: true }}
+              />
+            </Box>
+            
+            {/* Big Action Buttons */}
+            <Button
+              variant="contained" onClick={() => handleTrade("buy")} disabled={loading}
+              sx={{ height: 100, px: 6, fontSize: '2.5rem', fontWeight: 900, borderRadius: '16px', background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)', boxShadow: '0 0 50px rgba(16, 185, 129, 0.4)', '&:hover': { background: '#10b981', boxShadow: '0 0 80px rgba(16, 185, 129, 0.6)', transform: 'scale(1.02)' }, transition: 'all 0.2s' }}
+            >
+              LONG
+            </Button>
+            <Button
+              variant="contained" onClick={() => handleTrade("sell")} disabled={loading}
+              sx={{ height: 100, px: 6, fontSize: '2.5rem', fontWeight: 900, borderRadius: '16px', background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)', boxShadow: '0 0 50px rgba(239, 68, 68, 0.4)', '&:hover': { background: '#ef4444', boxShadow: '0 0 80px rgba(239, 68, 68, 0.6)', transform: 'scale(1.02)' }, transition: 'all 0.2s' }}
+            >
+              SHORT
+            </Button>
+          </Box>
+
+          {/* Status Overlay */}
+          {(error || success) && (
+            <Box sx={{ position: 'fixed', top: 120, left: '50%', transform: 'translateX(-50%)', zIndex: 10000, width: '100%', maxWidth: 600 }}>
+              {error && <Alert severity="error" sx={{ mb: 1, background: 'rgba(239,68,68,0.95)', color: '#fff', fontSize: '1.2rem', fontWeight: 700, '& .MuiAlert-icon': { color: '#fff', fontSize: '2rem' } }}>{error}</Alert>}
+              {success && <Alert severity="success" sx={{ background: 'rgba(16,185,129,0.95)', color: '#fff', fontSize: '1.2rem', fontWeight: 700, '& .MuiAlert-icon': { color: '#fff', fontSize: '2rem' } }}>{success}</Alert>}
+            </Box>
+          )}
+        </Box>
+      )}
     </Grid>
   );
 }

@@ -11,7 +11,7 @@ const formatDate = (value: string): string =>
 
 export default function NewsPage() {
   const [news, setNews] = useState<NewsItem[]>([]);
-  const [query, setQuery] = useState("ekonomi OR finans OR borsa OR kripto OR yatırım");
+  const [scope, setScope] = useState<"tr" | "global">("tr");
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
@@ -21,18 +21,17 @@ export default function NewsPage() {
     const loadNews = async () => {
       setLoading(true); setError(null); setWarning(null);
       try {
-        const params = new URLSearchParams({ q: query, scope: "global", limit: "10" });
+        const params = new URLSearchParams({ scope, limit: "18" });
         const res = await api.get<NewsResponse>(`/news/finance?${params.toString()}`);
         setNews(res.data.items);
         if (res.data.warning) {
-          const details = (res.data.providerErrors || []).slice(0, 2).join(" | ");
-          setWarning(details ? `${res.data.warning} (${details})` : res.data.warning);
+          setWarning(res.data.warning);
         }
       } catch { setError("Finans haberleri yuklenemedi."); }
       finally { setLoading(false); }
     };
     loadNews();
-  }, [query]);
+  }, [scope]);
 
   const hasNews = useMemo(() => news.length > 0, [news]);
 
@@ -67,6 +66,22 @@ export default function NewsPage() {
         <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2.5 }}>
           Borsa, kripto, emtia ve makro ekonomi başlıklarında güncel haber akışını takip edin.
         </Typography>
+
+      <Stack direction="row" spacing={1} sx={{ mt: 2 }}>
+        {[{ v: "tr" as const, l: "🇹🇷 Türkçe" },
+          { v: "global" as const, l: "🌍 Yabancı" }
+        ].map(s => (
+          <Chip key={s.v} label={s.l} clickable
+            onClick={() => setScope(s.v)}
+            sx={{
+              fontWeight: 600,
+              background: scope === s.v ? 'rgba(0,212,255,0.12)' : 'rgba(255,255,255,0.03)',
+              color: scope === s.v ? '#00d4ff' : 'text.secondary',
+              border: `1px solid ${scope === s.v ? 'rgba(0,212,255,0.3)' : 'rgba(255,255,255,0.08)'}`,
+              '&:hover': { background: 'rgba(0,212,255,0.08)' },
+            }} />
+        ))}
+      </Stack>
       </Box>
 
       {warning && !loading && <Alert severity="warning" sx={{ mb: 2 }}>{warning}</Alert>}
@@ -96,12 +111,10 @@ export default function NewsPage() {
                 },
               }}>
                 <CardActionArea component="a" href={item.url} target="_blank" rel="noopener noreferrer" sx={{ flexGrow: 1, display: 'flex', flexDirection: 'column', alignItems: 'stretch', justifyContent: 'flex-start' }}>
-                  {item.imageUrl && (
-                    <Box sx={{ overflow: 'hidden', width: '100%' }}>
-                      <CardMedia component="img" image={item.imageUrl} alt={item.title} className="news-image"
-                        sx={{ height: 180, objectFit: "cover", transition: 'transform 0.4s ease' }} />
-                    </Box>
-                  )}
+              <Box sx={{ overflow: 'hidden', width: '100%' }}>
+                <CardMedia component="img" image={item.imageUrl || "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=800&q=80"} alt={item.title} className="news-image"
+                  sx={{ height: 180, objectFit: "cover", transition: 'transform 0.4s ease' }} />
+              </Box>
                   <CardContent sx={{ flexGrow: 1, width: '100%' }}>
                     <Stack direction="row" sx={{ mb: 1, justifyContent: "space-between", alignItems: "center" }}>
                       <Chip size="small" label={item.source} sx={{

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import { Box, Typography, Button, Paper, Grid, Avatar, List, ListItem, ListItemAvatar, ListItemText, Select, MenuItem, CircularProgress } from "@mui/material";
-import { TrendingUp, TrendingDown, AutoAwesome, SportsEsports, LocalFireDepartment, EmojiEvents } from "@mui/icons-material";
+import { TrendingUp, TrendingDown, Radar, Leaderboard, OfflineBolt, AccessTime } from "@mui/icons-material";
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from "recharts";
 import { api } from "../api";
 import { useMarket } from "../contexts/MarketContext";
@@ -114,29 +114,29 @@ export default function GamePage() {
   };
 
   return (
-    <Box sx={{ maxWidth: 800, mx: "auto", py: 2 }}>
+    <Box sx={{ maxWidth: 1400, mx: "auto", py: 2 }}>
       <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 1 }}>
-        <SportsEsports sx={{ color: "#f59e0b", fontSize: 32 }} />
-        <Typography variant="h4" sx={{ fontWeight: 800 }}>Borsa Kahini</Typography>
+        <Radar sx={{ color: "#00d4ff", fontSize: 32 }} />
+        <Typography variant="h4" sx={{ fontWeight: 800 }}>Piyasa Tahmin Modülü</Typography>
       </Box>
       <Typography variant="body2" sx={{ color: "text.secondary", mb: 4 }}>
-        Canlı piyasa verileriyle önümüzdeki ilk fiyat değişiminin yönünü tahmin et, kombo yap, liderlik tablosuna tırman! (Veriler 15 saniyede bir güncellenir)
+        Gerçek zamanlı veri akışı üzerinden kısa vadeli piyasa yönünü analiz edin, doğru tahminlerle isabet serisi yakalayıp global sıralamada yükselin. (Veriler 15 saniyede bir güncellenir)
       </Typography>
 
       <Grid container spacing={3}>
         {/* Score Board */}
         <Grid item xs={12} sm={6}>
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', textAlign: 'center' }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>TOPLAM PUAN</Typography>
-            <Typography variant="h3" sx={{ fontWeight: 900, color: '#00d4ff' }}>{score}</Typography>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>PERFORMANS SKORU</Typography>
+            <Typography variant="h4" sx={{ fontWeight: 800, color: '#e2e8f0' }}>{score}</Typography>
           </Paper>
         </Grid>
         <Grid item xs={12} sm={6}>
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', textAlign: 'center' }}>
-            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1 }}>MEVCUT SERİ (COMBO)</Typography>
+            <Typography variant="subtitle2" sx={{ color: 'text.secondary', fontWeight: 700, mb: 1, letterSpacing: '0.05em' }}>İSABET SERİSİ</Typography>
             <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1 }}>
-              <LocalFireDepartment sx={{ color: streak > 2 ? '#ef4444' : '#f59e0b', fontSize: 36, animation: streak > 2 ? 'pulse 1s infinite' : 'none' }} />
-              <Typography variant="h3" sx={{ fontWeight: 900, color: streak > 2 ? '#ef4444' : '#f59e0b' }}>x{streak}</Typography>
+              <OfflineBolt sx={{ color: streak > 2 ? '#00d4ff' : 'text.secondary', fontSize: 32, animation: streak > 2 ? 'pulse 2s infinite' : 'none' }} />
+              <Typography variant="h4" sx={{ fontWeight: 800, color: streak > 2 ? '#00d4ff' : 'text.primary' }}>x{streak}</Typography>
             </Box>
           </Paper>
         </Grid>
@@ -169,20 +169,21 @@ export default function GamePage() {
             {gameResult.status && (
               <Box sx={{
                 position: 'absolute', top: '40%', left: '50%', transform: 'translate(-50%, -50%)', zIndex: 10,
-                background: gameResult.status === 'won' ? 'rgba(16,185,129,0.9)' : 'rgba(239,68,68,0.9)',
-                px: 4, py: 2, borderRadius: '16px', backdropFilter: 'blur(10px)',
-                animation: 'scaleIn 0.3s ease-out', boxShadow: '0 10px 30px rgba(0,0,0,0.5)'
+                background: gameResult.status === 'won' ? 'rgba(16,185,129,0.15)' : 'rgba(239,68,68,0.15)',
+                border: `1px solid ${gameResult.status === 'won' ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'}`,
+                px: 4, py: 2, borderRadius: '12px', backdropFilter: 'blur(20px)',
+                animation: 'scaleIn 0.3s ease-out', boxShadow: `0 10px 40px ${gameResult.status === 'won' ? 'rgba(16,185,129,0.2)' : 'rgba(239,68,68,0.2)'}`
               }}>
-                <Typography variant="h5" sx={{ fontWeight: 900, color: '#fff', textAlign: 'center' }}>
-                  {gameResult.status === 'won' ? 'HARİKA TAHMİN!' : 'YANLIŞ TAHMİN'}
+                <Typography variant="h5" sx={{ fontWeight: 900, color: gameResult.status === 'won' ? '#10b981' : '#ef4444', textAlign: 'center', letterSpacing: '0.05em' }}>
+                  {gameResult.status === 'won' ? 'İSABETLİ İŞLEM' : 'BAŞARISIZ İŞLEM'}
                 </Typography>
-                <Typography variant="h6" sx={{ fontWeight: 800, color: 'rgba(255,255,255,0.8)', textAlign: 'center' }}>
+                <Typography variant="h6" sx={{ fontWeight: 700, color: 'text.secondary', textAlign: 'center', mt: 0.5 }}>
                   {gameResult.points > 0 ? '+' : ''}{gameResult.points} Puan
                 </Typography>
               </Box>
             )}
 
-            <Box sx={{ height: 250, width: '100%' }}>
+            <Box sx={{ height: 380, width: '100%' }}>
               <ResponsiveContainer width="100%" height="100%">
                 <AreaChart data={historyState.data}>
                   <defs>
@@ -209,23 +210,26 @@ export default function GamePage() {
               disabled={isWaitingTick || !currentInst}
               onClick={() => handlePredict('up')}
               sx={{
-                py: 2, fontSize: '1.2rem', fontWeight: 800,
-                background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
-                boxShadow: '0 8px 25px rgba(16,185,129,0.2)',
-                '&:hover': { background: 'linear-gradient(135deg, #34d399 0%, #10b981 100%)' }
+                py: 2, fontSize: '1.1rem', fontWeight: 800,
+                background: 'rgba(16,185,129,0.1)',
+                color: '#10b981',
+                border: '1px solid rgba(16,185,129,0.3)',
+                boxShadow: 'none',
+                '&:hover': { background: 'rgba(16,185,129,0.2)', border: '1px solid rgba(16,185,129,0.5)' },
+                '&.Mui-disabled': { background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.05)' }
               }}
             >
-              <TrendingUp sx={{ mr: 1, fontSize: 28 }} /> YÜKSELİR
+              <TrendingUp sx={{ mr: 1, fontSize: 24 }} /> LONG (ALIM)
             </Button>
 
             {isWaitingTick ? (
-              <Box sx={{ px: 4, textAlign: 'center' }}>
-                <CircularProgress size={32} sx={{ color: '#00d4ff', mb: 1 }} />
-                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', lineHeight: 1.2 }}>PİYASA<br/>BEKLENİYOR</Typography>
+              <Box sx={{ px: 2, textAlign: 'center' }}>
+                <CircularProgress size={24} sx={{ color: '#7c3aed', mb: 1 }} />
+                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, display: 'block', lineHeight: 1.2, letterSpacing: '0.05em' }}>VERİ AKIŞI<br/>BEKLENİYOR</Typography>
               </Box>
             ) : (
-              <Box sx={{ px: 4, textAlign: 'center' }}>
-                <AutoAwesome sx={{ color: 'text.secondary', fontSize: 32, opacity: 0.5 }} />
+              <Box sx={{ px: 2, textAlign: 'center' }}>
+                <AccessTime sx={{ color: 'text.secondary', fontSize: 24, opacity: 0.3 }} />
               </Box>
             )}
 
@@ -235,13 +239,16 @@ export default function GamePage() {
               disabled={isWaitingTick || !currentInst}
               onClick={() => handlePredict('down')}
               sx={{
-                py: 2, fontSize: '1.2rem', fontWeight: 800,
-                background: 'linear-gradient(135deg, #ef4444 0%, #dc2626 100%)',
-                boxShadow: '0 8px 25px rgba(239,68,68,0.2)',
-                '&:hover': { background: 'linear-gradient(135deg, #f87171 0%, #ef4444 100%)' }
+                py: 2, fontSize: '1.1rem', fontWeight: 800,
+                background: 'rgba(239,68,68,0.1)',
+                color: '#ef4444',
+                border: '1px solid rgba(239,68,68,0.3)',
+                boxShadow: 'none',
+                '&:hover': { background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.5)' },
+                '&.Mui-disabled': { background: 'rgba(255,255,255,0.02)', color: 'rgba(255,255,255,0.1)', borderColor: 'rgba(255,255,255,0.05)' }
               }}
             >
-              <TrendingDown sx={{ mr: 1, fontSize: 28 }} /> DÜŞER
+              <TrendingDown sx={{ mr: 1, fontSize: 24 }} /> SHORT (SATIM)
             </Button>
           </Box>
         </Grid>
@@ -250,8 +257,8 @@ export default function GamePage() {
         <Grid item xs={12} md={4}>
           <Paper elevation={0} sx={{ p: 3, background: 'rgba(255,255,255,0.02)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '16px', height: '100%', minHeight: 400 }}>
             <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2, pb: 2, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-              <EmojiEvents sx={{ color: '#ffd700', fontSize: 28 }} />
-              <Typography variant="h6" sx={{ fontWeight: 800 }}>Liderlik Tablosu</Typography>
+              <Leaderboard sx={{ color: '#00d4ff', fontSize: 24 }} />
+              <Typography variant="h6" sx={{ fontWeight: 800 }}>Global Sıralama</Typography>
             </Box>
             <List sx={{ p: 0 }}>
               {leaderboard.length === 0 ? (
@@ -264,17 +271,17 @@ export default function GamePage() {
                     <ListItemAvatar sx={{ minWidth: 40 }}>
                       <Avatar sx={{ 
                         width: 28, height: 28, fontSize: '0.8rem', fontWeight: 800,
-                        background: index === 0 ? 'linear-gradient(135deg, #ffd700, #f59e0b)' : 
-                                    index === 1 ? 'linear-gradient(135deg, #c0c0c0, #94a3b8)' : 
-                                    index === 2 ? 'linear-gradient(135deg, #cd7f32, #b45309)' : 
-                                    'rgba(255,255,255,0.1)',
-                        color: index < 3 ? '#000' : '#fff'
+                        background: 'rgba(255,255,255,0.05)',
+                        border: index === 0 ? '1px solid #ffd700' : 
+                                index === 1 ? '1px solid #c0c0c0' : 
+                                index === 2 ? '1px solid #cd7f32' : '1px solid rgba(255,255,255,0.1)',
+                        color: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'text.secondary'
                       }}>
                         {index + 1}
                       </Avatar>
                     </ListItemAvatar>
                     <ListItemText 
-                      primary={<Typography variant="body2" sx={{ fontWeight: 700, color: index === 0 ? '#ffd700' : 'text.primary' }}>{player.userName}</Typography>}
+                      primary={<Typography variant="body2" sx={{ fontWeight: 700, color: index === 0 ? '#ffd700' : index === 1 ? '#c0c0c0' : index === 2 ? '#cd7f32' : 'text.primary' }}>{player.userName}</Typography>}
                     />
                     <Typography variant="subtitle2" sx={{ fontWeight: 800, color: '#00d4ff' }}>
                       {player.score}
